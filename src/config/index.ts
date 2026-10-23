@@ -4,6 +4,7 @@ import os from "node:os";
 import dotenv from "dotenv";
 import type { CmdfConfig, PartialCmdfConfig } from "./types.js";
 
+// Load .env from current working directory
 dotenv.config();
 
 const CONFIG_DIR_NAME = ".cmdf";
@@ -17,20 +18,42 @@ export function getConfigFilePath(): string {
   return path.join(getConfigDir(), CONFIG_FILE_NAME);
 }
 
+// Also check for a user-level ~/.cmdf/.env if not found in cwd
+const userEnvPath = path.join(getConfigDir(), ".env");
+if (!process.env.GEMINI_API_KEY && fs.existsSync(userEnvPath)) {
+  dotenv.config({ path: userEnvPath });
+}
+
+function parseTimeoutMs(val?: string, defaultVal: number = 45000): number {
+  if (!val) return defaultVal;
+  const parsed = parseInt(val, 10);
+  return isNaN(parsed) || parsed < 5000 ? defaultVal : parsed;
+}
+
+function sanitizeString(val?: string): string | undefined {
+  if (!val) return undefined;
+  const trimmed = val.trim();
+  // Strip surrounding single or double quotes
+  return trimmed.replace(/^['"]|['"]$/g, "");
+}
+
 export function getDefaultConfig(): CmdfConfig {
+  const timeoutFromEnv =
+    process.env.CMDF_TIMEOUT_MS || process.env.GEMINI_TIMEOUT_MS;
+
   return {
     workspace:
-      process.env.CMDF_WORKSPACE ||
-      process.env.ASKTERM_WORKSPACE ||
+      sanitizeString(process.env.CMDF_WORKSPACE) ||
+      sanitizeString(process.env.ASKTERM_WORKSPACE) ||
       process.cwd(),
     provider: (process.env.CMDF_PROVIDER as "gemini" | "mock") || "gemini",
-    model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
+    model: sanitizeString(process.env.GEMINI_MODEL) || "gemini-3.8-flash",
     shell: undefined,
-    timeoutMs: 30000,
+    timeoutMs: parseTimeoutMs(timeoutFromEnv, 45000),
     outputFormat: "text",
     historyLimit: 100,
     autoApproveReadOnly: false,
-    geminiApiKey: process.env.GEMINI_API_KEY,
+    geminiApiKey: sanitizeString(process.env.GEMINI_API_KEY),
   };
 }
 
@@ -55,8 +78,6 @@ export function saveUserConfig(updates: PartialCmdfConfig): void {
   }
   const current = loadUserConfig();
   const merged = { ...current, ...updates };
-  // Never save API keys to config.json directly if we want to encourage .env usage,
-  // but if explicitly requested, can save non-secret preferences.
   fs.writeFileSync(filePath, JSON.stringify(merged, null, 2), "utf-8");
 }
 
@@ -80,18 +101,24 @@ export function getResolvedConfig(
     ...cleanedOverrides,
   };
 
-  // Environment variables always override file config for API keys
+  // Environment variables take precedence for API keys, model, workspace, and timeout
   if (process.env.GEMINI_API_KEY) {
-    resolved.geminiApiKey = process.env.GEMINI_API_KEY;
+    resolved.geminiApiKey = sanitizeString(process.env.GEMINI_API_KEY);
   }
   if (process.env.GEMINI_MODEL) {
-    resolved.model = process.env.GEMINI_MODEL;
+    resolved.model = sanitizeString(process.env.GEMINI_MODEL) || resolved.model;
   }
   if (process.env.CMDF_WORKSPACE || process.env.ASKTERM_WORKSPACE) {
     resolved.workspace =
-      process.env.CMDF_WORKSPACE ||
-      process.env.ASKTERM_WORKSPACE ||
-      resolved.workspace;
+      sanitizeString(
+        process.env.CMDF_WORKSPACE || process.env.ASKTERM_WORKSPACE,
+      ) || resolved.workspace;
+  }
+  if (process.env.CMDF_TIMEOUT_MS || process.env.GEMINI_TIMEOUT_MS) {
+    resolved.timeoutMs = parseTimeoutMs(
+      process.env.CMDF_TIMEOUT_MS || process.env.GEMINI_TIMEOUT_MS,
+      resolved.timeoutMs,
+    );
   }
 
   // Normalize workspace path

@@ -12,10 +12,14 @@ export interface DoctorCheckResult {
   remedy?: string;
 }
 
-export async function runDoctorChecks(): Promise<DoctorCheckResult[]> {
+import type { PartialCmdfConfig } from "../config/types.js";
+
+export async function runDoctorChecks(
+  customConfig?: PartialCmdfConfig,
+): Promise<DoctorCheckResult[]> {
   const results: DoctorCheckResult[] = [];
   const env = getEnvironmentInfo();
-  const config = getResolvedConfig();
+  const config = getResolvedConfig(customConfig);
 
   // 1. Node.js Check
   const nodeMajor = parseInt(process.versions.node.split(".")[0] || "0", 10);
@@ -142,22 +146,26 @@ export async function runDoctorChecks(): Promise<DoctorCheckResult[]> {
       const provider = new GeminiAIProvider(
         config.geminiApiKey,
         config.model,
-        8000,
+        15000,
       );
-      const isOnline = await provider.isAvailable();
+      const connResult = await provider.testConnectivity();
       results.push({
         category: "AI Provider",
         name: "API Connectivity",
-        passed: isOnline,
-        message: "Gemini SDK client initialized successfully",
+        passed: connResult.ok,
+        message: connResult.message,
+        remedy: !connResult.ok
+          ? "Run 'cmdf config' or check your GEMINI_API_KEY/GEMINI_MODEL in .env"
+          : undefined,
       });
     } catch (err: unknown) {
       results.push({
         category: "AI Provider",
         name: "API Connectivity",
         passed: false,
-        message: `API check warning: ${err instanceof Error ? err.message : String(err)}`,
-        remedy: "Verify internet connection and API quota at Google AI Studio.",
+        message: `API connection failed: ${err instanceof Error ? err.message : String(err)}`,
+        remedy:
+          "Verify internet connection, API key, and model availability at Google AI Studio.",
       });
     }
   }

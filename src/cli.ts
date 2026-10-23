@@ -40,6 +40,7 @@ program
   .option("-w, --workspace <path>", "Approved workspace root directory")
   .option("-m, --model <name>", "Gemini model to use")
   .option("-p, --provider <name>", "AI provider (gemini or mock)")
+  .option("-t, --timeout <ms>", "AI request timeout in milliseconds")
   .option(
     "-d, --dry-run",
     "Simulate plan without modifying files or executing commands",
@@ -50,6 +51,7 @@ program
       workspace: options.workspace,
       model: options.model,
       provider: options.provider,
+      timeoutMs: options.timeout ? parseInt(options.timeout, 10) : undefined,
     });
 
     const env = getEnvironmentInfo(config.shell);
@@ -189,12 +191,15 @@ program
   .option("-w, --workspace <path>", "Workspace directory")
   .option("-m, --model <name>", "Gemini model to use")
   .option("-p, --provider <name>", "AI provider (gemini or mock)")
+  .option("-t, --timeout <ms>", "AI request timeout in milliseconds")
   .action(async (instructionWords: string[], options) => {
     const parentOpts = program.opts();
+    const timeoutRaw = options.timeout || parentOpts.timeout;
     const config = getResolvedConfig({
       workspace: options.workspace || parentOpts.workspace,
       model: options.model || parentOpts.model,
       provider: options.provider || parentOpts.provider,
+      timeoutMs: timeoutRaw ? parseInt(timeoutRaw, 10) : undefined,
     });
     const env = getEnvironmentInfo(config.shell);
     const instruction = instructionWords.join(" ").trim();
@@ -229,11 +234,14 @@ program
   .description("Explain a shell command without executing it")
   .option("-m, --model <name>", "Gemini model to use")
   .option("-p, --provider <name>", "AI provider (gemini or mock)")
+  .option("-t, --timeout <ms>", "AI request timeout in milliseconds")
   .action(async (commandWords: string[], options) => {
     const parentOpts = program.opts();
+    const timeoutRaw = options.timeout || parentOpts.timeout;
     const config = getResolvedConfig({
       model: options.model || parentOpts.model,
       provider: options.provider || parentOpts.provider,
+      timeoutMs: timeoutRaw ? parseInt(timeoutRaw, 10) : undefined,
     });
     const env = getEnvironmentInfo(config.shell);
     const cmdToExplain = commandWords.join(" ").trim();

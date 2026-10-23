@@ -14,7 +14,7 @@ import {
 
 describe("CLI Utilities, Diagnostics & Config", () => {
   it("runs doctor checks and returns structured health report", async () => {
-    const checks = await runDoctorChecks();
+    const checks = await runDoctorChecks({ provider: "mock" });
     expect(checks.length).toBeGreaterThanOrEqual(6);
 
     const nodeCheck = checks.find((c) => c.name === "Node.js");

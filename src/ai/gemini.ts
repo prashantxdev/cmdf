@@ -1,7 +1,166 @@
 import { GoogleGenAI } from "@google/genai";
-import type { AIProvider } from "./provider.js";
+import type { AIProvider, ConnectivityResult } from "./provider.js";
 import type { ActionPlan, AIPlanningContext } from "./types.js";
 import { ActionPlanSchema } from "./schemas.js";
+import { redactSecrets } from "../utils/redactor.js";
+
+export type GeminiErrorCategory =
+  | "auth"
+  | "model_not_found"
+  | "rate_limit"
+  | "unavailable"
+  | "timeout"
+  | "network"
+  | "validation"
+  | "unknown";
+
+export interface ClassifiedGeminiError {
+  category: GeminiErrorCategory;
+  isRetryable: boolean;
+  message: string;
+  originalError: unknown;
+}
+
+export function classifyGeminiError(
+  err: unknown,
+  model: string,
+  timeoutMs: number,
+  apiKey?: string,
+): ClassifiedGeminiError {
+  const rawMsg = err instanceof Error ? err.message : String(err);
+  const status =
+    typeof (err as { status?: number })?.status === "number"
+      ? (err as { status?: number }).status
+      : undefined;
+
+  // Redact any raw secrets from error messages
+  const cleanMsg = redactSecrets(rawMsg, apiKey ? [apiKey] : []);
+
+  // 1. Authentication / Permissions
+  if (
+    status === 401 ||
+    status === 403 ||
+    cleanMsg.includes("API_KEY_INVALID") ||
+    cleanMsg.includes("API key not valid") ||
+    cleanMsg.includes("PERMISSION_DENIED") ||
+    cleanMsg.includes("UNAUTHENTICATED")
+  ) {
+    return {
+      category: "auth",
+      isRetryable: false,
+      message:
+        "Invalid or unauthorized Gemini API key.\n" +
+        "Please verify your GEMINI_API_KEY in .env or get a new key from https://aistudio.google.com/",
+      originalError: err,
+    };
+  }
+
+  // 2. Model Not Found / Decommissioned
+  if (
+    status === 404 ||
+    cleanMsg.includes("not found") ||
+    cleanMsg.includes("NOT_FOUND") ||
+    cleanMsg.includes("is no longer available")
+  ) {
+    return {
+      category: "model_not_found",
+      isRetryable: false,
+      message:
+        `Gemini model "${model}" was not found or is not available for this API key.\n` +
+        "Please check your GEMINI_MODEL setting in .env or run 'cmdf doctor' to inspect your setup.",
+      originalError: err,
+    };
+  }
+
+  // 3. Rate Limit / Quota Exceeded
+  if (
+    status === 429 ||
+    cleanMsg.includes("RESOURCE_EXHAUSTED") ||
+    cleanMsg.includes("rate limit") ||
+    cleanMsg.includes("Quota exceeded")
+  ) {
+    return {
+      category: "rate_limit",
+      isRetryable: true,
+      message:
+        "Gemini API rate limit or quota exceeded (429 RESOURCE_EXHAUSTED).\n" +
+        "Please wait a moment before trying again, or check your account quota at https://aistudio.google.com/",
+      originalError: err,
+    };
+  }
+
+  // 4. Timeouts & Deadlines
+  if (
+    status === 504 ||
+    cleanMsg.includes("DEADLINE_EXCEEDED") ||
+    cleanMsg.includes("timed out after")
+  ) {
+    return {
+      category: "timeout",
+      isRetryable: true,
+      message:
+        `AI planning request timed out after ${timeoutMs}ms.\n` +
+        "Gemini servers may be experiencing temporary latency.\n" +
+        "You can increase the timeout by setting GEMINI_TIMEOUT_MS in .env (e.g. GEMINI_TIMEOUT_MS=60000), or try again.",
+      originalError: err,
+    };
+  }
+
+  // 5. Service High Demand / Unavailable
+  if (
+    status === 503 ||
+    status === 502 ||
+    status === 500 ||
+    cleanMsg.includes("UNAVAILABLE") ||
+    cleanMsg.includes("high demand") ||
+    cleanMsg.includes("overloaded")
+  ) {
+    return {
+      category: "unavailable",
+      isRetryable: true,
+      message:
+        `Gemini model "${model}" is currently experiencing temporary high demand (503 UNAVAILABLE).\n` +
+        "Spikes in demand are usually temporary. Please try again in a few moments.",
+      originalError: err,
+    };
+  }
+
+  // 6. Network connectivity failures
+  if (
+    cleanMsg.includes("ENOTFOUND") ||
+    cleanMsg.includes("ECONNRESET") ||
+    cleanMsg.includes("ECONNREFUSED") ||
+    cleanMsg.includes("ETIMEDOUT") ||
+    cleanMsg.includes("fetch failed")
+  ) {
+    return {
+      category: "network",
+      isRetryable: true,
+      message:
+        "Network error connecting to Gemini API.\n" +
+        "Please check your internet connection and DNS settings.",
+      originalError: err,
+    };
+  }
+
+  // 7. Schema / Parsing failures
+  if (cleanMsg.includes("JSON") || cleanMsg.includes("ZodError")) {
+    return {
+      category: "validation",
+      isRetryable: true,
+      message: `Failed to parse AI response into structured plan: ${cleanMsg}`,
+      originalError: err,
+    };
+  }
+
+  // Default fallback
+  return {
+    category: "unknown",
+    isRetryable: false,
+    message: `Gemini API error: ${cleanMsg}`,
+    originalError: err,
+  };
+}
 
 export class GeminiAIProvider implements AIProvider {
   name = "gemini";
@@ -13,18 +172,87 @@ export class GeminiAIProvider implements AIProvider {
   constructor(
     apiKey?: string,
     model: string = "gemini-3.8-flash",
-    timeoutMs: number = 30000,
+    timeoutMs: number = 45000,
+    clientOverride?: unknown,
   ) {
     this.apiKey = apiKey;
     this.model = model;
     this.timeoutMs = timeoutMs;
-    if (this.apiKey) {
-      this.client = new GoogleGenAI({ apiKey: this.apiKey });
+    if (clientOverride) {
+      this.client = clientOverride as GoogleGenAI;
+    } else if (this.apiKey) {
+      // Pass httpOptions.timeout so the official SDK enforces deadline natively
+      this.client = new GoogleGenAI({
+        apiKey: this.apiKey,
+        httpOptions: { timeout: this.timeoutMs },
+      });
     }
   }
 
   async isAvailable(): Promise<boolean> {
     return Boolean(this.apiKey && this.apiKey.trim().length > 0);
+  }
+
+  /**
+   * Safe live API connectivity check for cmdf doctor.
+   * Tests authentication and model availability using a fast countTokens call
+   * without executing shell commands or generating large outputs.
+   */
+  async testConnectivity(): Promise<ConnectivityResult> {
+    if (!this.client || !this.apiKey) {
+      return {
+        ok: false,
+        latencyMs: 0,
+        model: this.model,
+        message:
+          "GEMINI_API_KEY is not configured. Add your key to .env (https://aistudio.google.com/)",
+        error: "Missing API Key",
+      };
+    }
+
+    const startTime = Date.now();
+    try {
+      let timerId: NodeJS.Timeout | null = null;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => {
+          reject(
+            new Error(`Doctor connectivity check timed out after 15000ms`),
+          );
+        }, 15000);
+      });
+
+      const checkPromise = this.client.models.countTokens({
+        model: this.model,
+        contents: "ping",
+      });
+
+      await Promise.race([checkPromise, timeoutPromise]).finally(() => {
+        if (timerId !== null) clearTimeout(timerId);
+      });
+
+      const latencyMs = Date.now() - startTime;
+      return {
+        ok: true,
+        latencyMs,
+        model: this.model,
+        message: `Successfully connected to Gemini API (${this.model}, ${latencyMs}ms)`,
+      };
+    } catch (err: unknown) {
+      const latencyMs = Date.now() - startTime;
+      const classified = classifyGeminiError(
+        err,
+        this.model,
+        15000,
+        this.apiKey,
+      );
+      return {
+        ok: false,
+        latencyMs,
+        model: this.model,
+        message: classified.message,
+        error: classified.message,
+      };
+    }
   }
 
   private buildSystemPrompt(context: AIPlanningContext): string {
@@ -97,19 +325,17 @@ JSON Output Format:
     const systemPrompt = this.buildSystemPrompt(context);
     const userPrompt = `User Request: "${prompt}"\nGenerate the structured JSON action plan.`;
 
-    // Attempt with retry on transient errors (503 / 429)
+    const maxAttempts = 3;
     let lastError: unknown;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      let timerId: NodeJS.Timeout | null = null;
       try {
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(
-            () =>
-              reject(
-                new Error(`AI request timed out after ${this.timeoutMs}ms`),
-              ),
-            this.timeoutMs,
-          ),
-        );
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timerId = setTimeout(() => {
+            reject(new Error(`AI request timed out after ${this.timeoutMs}ms`));
+          }, this.timeoutMs);
+        });
 
         const apiPromise = this.client.models.generateContent({
           model: this.model,
@@ -120,9 +346,17 @@ JSON Output Format:
           },
         });
 
-        const response = await Promise.race([apiPromise, timeoutPromise]);
-        const responseText = response.text?.trim() || "";
+        const response = await Promise.race([
+          apiPromise,
+          timeoutPromise,
+        ]).finally(() => {
+          if (timerId !== null) {
+            clearTimeout(timerId);
+            timerId = null;
+          }
+        });
 
+        const responseText = response.text?.trim() || "";
         if (!responseText) {
           throw new Error("Received empty response from Gemini API");
         }
@@ -139,26 +373,35 @@ JSON Output Format:
         return validatedPlan;
       } catch (err: unknown) {
         lastError = err;
-        const msg = err instanceof Error ? err.message : String(err);
+        const classified = classifyGeminiError(
+          err,
+          this.model,
+          this.timeoutMs,
+          this.apiKey,
+        );
 
-        // Check if retryable (503 high demand, 429 rate limit)
-        if (
-          (msg.includes("503") ||
-            msg.includes("429") ||
-            msg.includes("UNAVAILABLE")) &&
-          attempt < 3
-        ) {
-          await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+        // Bounded retry with exponential backoff and jitter only for retryable errors
+        if (classified.isRetryable && attempt < maxAttempts) {
+          const backoffDelay = Math.min(
+            1500 * Math.pow(2, attempt - 1) + Math.random() * 500,
+            8000,
+          );
+          await new Promise((resolve) => setTimeout(resolve, backoffDelay));
           continue;
         }
 
-        break;
+        // Non-retryable error (e.g. auth, model not found) or max attempts exhausted
+        throw new Error(`AI planning failed:\n${classified.message}`);
       }
     }
 
-    const errorDetails =
-      lastError instanceof Error ? lastError.message : String(lastError);
-    throw new Error(`AI planning failed: ${errorDetails}`);
+    const finalClassified = classifyGeminiError(
+      lastError,
+      this.model,
+      this.timeoutMs,
+      this.apiKey,
+    );
+    throw new Error(`AI planning failed:\n${finalClassified.message}`);
   }
 
   async explainCommand(command: string): Promise<string> {
@@ -179,16 +422,39 @@ ${command}
 \`\`\`
 `;
 
+    let timerId: NodeJS.Timeout | null = null;
     try {
-      const response = await this.client.models.generateContent({
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => {
+          reject(
+            new Error(`Explain request timed out after ${this.timeoutMs}ms`),
+          );
+        }, this.timeoutMs);
+      });
+
+      const apiPromise = this.client.models.generateContent({
         model: this.model,
         contents: prompt,
       });
 
+      const response = await Promise.race([apiPromise, timeoutPromise]).finally(
+        () => {
+          if (timerId !== null) {
+            clearTimeout(timerId);
+            timerId = null;
+          }
+        },
+      );
+
       return response.text?.trim() || "No explanation generated.";
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`Failed to explain command: ${msg}`);
+      const classified = classifyGeminiError(
+        err,
+        this.model,
+        this.timeoutMs,
+        this.apiKey,
+      );
+      throw new Error(`Failed to explain command:\n${classified.message}`);
     }
   }
 }

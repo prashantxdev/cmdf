@@ -18,6 +18,15 @@ export class MockAIProvider implements AIProvider {
     return true;
   }
 
+  async testConnectivity() {
+    return {
+      ok: true,
+      latencyMs: 1,
+      message: "Mock AI provider is ready and offline.",
+      model: "mock",
+    };
+  }
+
   async generatePlan(
     prompt: string,
     context: AIPlanningContext,
