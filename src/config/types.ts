@@ -1,0 +1,13 @@
+export interface CmdfConfig {
+  workspace: string;
+  provider: "gemini" | "mock";
+  model: string;
+  shell?: string;
+  timeoutMs: number;
+  outputFormat: "text" | "json";
+  historyLimit: number;
+  autoApproveReadOnly: boolean;
+  geminiApiKey?: string;
+}
+
+export type PartialCmdfConfig = Partial<CmdfConfig>;
