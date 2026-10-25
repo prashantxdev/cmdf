@@ -18,8 +18,16 @@ export class AIPlanner {
   }
 
   static fromConfig(config: CmdfConfig): AIPlanner {
-    if (config.provider === "mock" || !config.geminiApiKey) {
+    if (config.provider === "mock") {
       return new AIPlanner(new MockAIProvider());
+    }
+    if (!config.geminiApiKey) {
+      throw new Error(
+        "Gemini API key is not configured.\n" +
+          "Please configure your personal key with: cmdf config set-key\n" +
+          "Or set an environment variable: GEMINI_API_KEY=your_key\n" +
+          "Get a free key from Google AI Studio at: https://aistudio.google.com/apikey",
+      );
     }
     return new AIPlanner(
       new GeminiAIProvider(config.geminiApiKey, config.model, config.timeoutMs),

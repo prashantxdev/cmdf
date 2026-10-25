@@ -1,3 +1,6 @@
+export type ApiKeySource =
+  "environment" | "user_config" | "project_env" | "none";
+
 export interface CmdfConfig {
   workspace: string;
   provider: "gemini" | "mock";
@@ -8,6 +11,7 @@ export interface CmdfConfig {
   historyLimit: number;
   autoApproveReadOnly: boolean;
   geminiApiKey?: string;
+  apiKeySource?: ApiKeySource;
 }
 
 export type PartialCmdfConfig = Partial<CmdfConfig>;

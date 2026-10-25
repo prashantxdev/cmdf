@@ -12,13 +12,13 @@
     "developer-tools",
     "cross-platform"
   ],
-  "homepage": "https://github.com/cmdf/cmdf#readme",
+  "homepage": "https://github.com/prashantxdev/cmdf#readme",
   "bugs": {
-    "url": "https://github.com/cmdf/cmdf/issues"
+    "url": "https://github.com/prashantxdev/cmdf/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cmdf/cmdf.git"
+    "url": "git+https://github.com/prashantxdev/cmdf.git"
   },
   "license": "MIT",
   "author": "cmdf Contributors",

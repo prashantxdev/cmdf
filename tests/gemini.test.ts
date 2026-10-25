@@ -61,6 +61,25 @@ describe("GeminiAIProvider Error Classification & Actions", () => {
     expect(classified.message).toContain("rate limit or quota exceeded");
   });
 
+  it("classifies daily quota exhaustion as non-retryable with model switch remedy", () => {
+    const dailyErr = {
+      status: 429,
+      message:
+        "Generate content requests per day limit exceeded on Free Tier. model: gemini-3.8-flash",
+    };
+    const classified = classifyGeminiError(
+      dailyErr,
+      "gemini-3.8-flash",
+      30000,
+      dummyKey,
+    );
+
+    expect(classified.category).toBe("daily_quota_exhausted");
+    expect(classified.isRetryable).toBe(false);
+    expect(classified.message).toContain("daily Gemini API quota has been exhausted");
+    expect(classified.message).toContain("gemini-3.5-flash");
+  });
+
   it("classifies 503 high demand spikes as retryable", () => {
     const highDemandErr = {
       status: 503,
@@ -267,10 +286,10 @@ describe("GeminiAIProvider with Mocked Client", () => {
     expect(plan.steps).toHaveLength(1);
   });
 
-  it("testConnectivity succeeds when countTokens succeeds", async () => {
+  it("testConnectivity succeeds when minimal generation probe succeeds", async () => {
     const mockClient = {
       models: {
-        countTokens: vi.fn().mockResolvedValue({ totalTokens: 2 }),
+        generateContent: vi.fn().mockResolvedValue({ text: "pong" }),
       },
     };
 
@@ -289,7 +308,7 @@ describe("GeminiAIProvider with Mocked Client", () => {
   it("testConnectivity fails with classified message when authentication fails", async () => {
     const mockClient = {
       models: {
-        countTokens: vi.fn().mockRejectedValue({
+        generateContent: vi.fn().mockRejectedValue({
           status: 401,
           message: "API_KEY_INVALID",
         }),
@@ -306,5 +325,189 @@ describe("GeminiAIProvider with Mocked Client", () => {
     const result = await provider.testConnectivity();
     expect(result.ok).toBe(false);
     expect(result.message).toContain("Invalid or unauthorized Gemini API key");
+  });
+
+  it("testConnectivity fails and advises switching models when daily quota is exhausted", async () => {
+    const mockClient = {
+      models: {
+        generateContent: vi.fn().mockRejectedValue({
+          status: 429,
+          message:
+            "Generate content requests per day limit exceeded on Free Tier. model: gemini-3.8-flash",
+        }),
+      },
+    };
+
+    const provider = new GeminiAIProvider(
+      dummyKey,
+      "gemini-3.8-flash",
+      5000,
+      mockClient,
+    );
+
+    const result = await provider.testConnectivity();
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("daily Gemini API quota has been exhausted");
+    expect(result.message).toContain("gemini-3.5-flash");
+  });
+
+  it("handles clarificationQuestion: null response cleanly (gemini-3.5-flash-lite regression)", async () => {
+    const rawResponse = JSON.stringify({
+      intent: "Create a folder named DEMO",
+      assumptions: ["The folder should be created in the current directory"],
+      steps: [
+        {
+          id: 1,
+          action: {
+            type: "create_directory",
+            path: "DEMO",
+            description: "Creates a new folder named DEMO",
+          },
+          risk: "modifying",
+          explanation: "Creates directory DEMO in the current workspace",
+          affectsData: true,
+          targetPaths: ["DEMO"],
+        },
+      ],
+      overallRisk: "modifying",
+      summary: "Create a directory named DEMO",
+      requiresClarification: false,
+      clarificationQuestion: null,
+    });
+
+    const mockClient = {
+      models: {
+        generateContent: vi.fn().mockResolvedValue({ text: rawResponse }),
+      },
+    };
+
+    const provider = new GeminiAIProvider(
+      dummyKey,
+      "gemini-3.5-flash-lite",
+      5000,
+      mockClient,
+    );
+
+    const plan = await provider.generatePlan(
+      "create a folder named DEMO",
+      dummyContext,
+    );
+    expect(plan.intent).toBe("Create a folder named DEMO");
+    expect(plan.requiresClarification).toBe(false);
+    expect(plan.clarificationQuestion).toBeNull();
+    expect(plan.steps).toHaveLength(1);
+    expect(plan.steps[0].action.type).toBe("create_directory");
+  });
+
+  it("handles valid clarification question when clarification is needed", async () => {
+    const rawResponse = JSON.stringify({
+      intent: "Create a folder",
+      assumptions: [],
+      steps: [],
+      overallRisk: "read-only",
+      summary: "Folder name missing",
+      requiresClarification: true,
+      clarificationQuestion: "What should the folder be named?",
+    });
+
+    const mockClient = {
+      models: {
+        generateContent: vi.fn().mockResolvedValue({ text: rawResponse }),
+      },
+    };
+
+    const provider = new GeminiAIProvider(
+      dummyKey,
+      "gemini-3.5-flash-lite",
+      5000,
+      mockClient,
+    );
+
+    const plan = await provider.generatePlan("create a folder", dummyContext);
+    expect(plan.requiresClarification).toBe(true);
+    expect(plan.clarificationQuestion).toBe("What should the folder be named?");
+  });
+
+  it("rejects when requiresClarification is true but clarificationQuestion is null", async () => {
+    const invalidResponse = JSON.stringify({
+      intent: "Create a folder",
+      assumptions: [],
+      steps: [],
+      overallRisk: "read-only",
+      summary: "Clarification required",
+      requiresClarification: true,
+      clarificationQuestion: null,
+    });
+
+    const mockClient = {
+      models: {
+        generateContent: vi.fn().mockResolvedValue({ text: invalidResponse }),
+      },
+    };
+
+    const provider = new GeminiAIProvider(
+      dummyKey,
+      "gemini-3.5-flash-lite",
+      5000,
+      mockClient,
+    );
+
+    await expect(
+      provider.generatePlan("create a folder", dummyContext),
+    ).rejects.toThrow(/A non-empty clarificationQuestion is required/);
+  });
+
+  it("formats malformed model response errors cleanly with field path", async () => {
+    const malformedResponse = JSON.stringify({
+      intent: 12345, // invalid type
+      steps: [],
+      overallRisk: "invalid_risk",
+      summary: "summary",
+    });
+
+    const mockClient = {
+      models: {
+        generateContent: vi.fn().mockResolvedValue({ text: malformedResponse }),
+      },
+    };
+
+    const provider = new GeminiAIProvider(
+      dummyKey,
+      "gemini-3.5-flash-lite",
+      5000,
+      mockClient,
+    );
+
+    await expect(
+      provider.generatePlan("test prompt", dummyContext),
+    ).rejects.toThrow(/Failed to parse AI response into structured plan/);
+  });
+
+  it("does not abort already-completed requests during validation failures", async () => {
+    let capturedSignal: AbortSignal | undefined;
+    const invalidResponse = "NOT VALID JSON";
+
+    const mockClient = {
+      models: {
+        generateContent: vi.fn().mockImplementation(({ config }) => {
+          capturedSignal = config?.abortSignal;
+          return Promise.resolve({ text: invalidResponse });
+        }),
+      },
+    };
+
+    const provider = new GeminiAIProvider(
+      dummyKey,
+      "gemini-3.5-flash-lite",
+      5000,
+      mockClient,
+    );
+
+    await expect(
+      provider.generatePlan("test prompt", dummyContext),
+    ).rejects.toThrow(/Failed to parse AI response/);
+
+    // Because the HTTP request finished, signal must NOT have been aborted after the fact
+    expect(capturedSignal?.aborted).toBe(false);
   });
 });

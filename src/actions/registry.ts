@@ -126,7 +126,7 @@ export async function executeAction(
       return fsActions.createFile(
         workspaceRoot,
         action.path,
-        action.content,
+        action.content || "",
         action.overwrite,
       );
     case "read_file":

@@ -105,6 +105,79 @@ describe("AIPlanner & Structured Planning", () => {
     expect(() => ActionPlanSchema.parse(invalidPlan)).toThrow();
   });
 
+  it("accepts clarificationQuestion: null and normalizes it to null when requiresClarification is false", () => {
+    const parsed = ActionPlanSchema.parse({
+      intent: "Create folder DEMO",
+      assumptions: null,
+      steps: [
+        {
+          id: 1,
+          action: {
+            type: "create_directory",
+            path: "DEMO",
+            description: null,
+          },
+          risk: "modifying",
+          explanation: null,
+          affectsData: null,
+          targetPaths: null,
+        },
+      ],
+      overallRisk: "modifying",
+      summary: "Create DEMO directory",
+      requiresClarification: false,
+      clarificationQuestion: null,
+    });
+
+    expect(parsed.requiresClarification).toBe(false);
+    expect(parsed.clarificationQuestion).toBeNull();
+    expect(parsed.assumptions).toEqual([]);
+    expect(parsed.steps[0].targetPaths).toEqual([]);
+    expect(parsed.steps[0].explanation).toBe("");
+    expect(parsed.steps[0].affectsData).toBe(false);
+  });
+
+  it("accepts a valid non-empty clarificationQuestion when requiresClarification is true", () => {
+    const parsed = ActionPlanSchema.parse({
+      intent: "Create folder",
+      assumptions: [],
+      steps: [],
+      overallRisk: "read-only",
+      summary: "Need clarification",
+      requiresClarification: true,
+      clarificationQuestion: "What should the folder be named?",
+    });
+
+    expect(parsed.requiresClarification).toBe(true);
+    expect(parsed.clarificationQuestion).toBe("What should the folder be named?");
+  });
+
+  it("rejects when requiresClarification is true but clarificationQuestion is null or empty", () => {
+    expect(() =>
+      ActionPlanSchema.parse({
+        intent: "Create folder",
+        assumptions: [],
+        steps: [],
+        overallRisk: "read-only",
+        summary: "Need clarification",
+        requiresClarification: true,
+        clarificationQuestion: null,
+      }),
+    ).toThrow(/A non-empty clarificationQuestion is required/);
+
+    expect(() =>
+      ActionPlanSchema.parse({
+        intent: "Create folder",
+        assumptions: [],
+        steps: [],
+        overallRisk: "read-only",
+        summary: "Need clarification",
+        requiresClarification: true,
+        clarificationQuestion: "   ",
+      }),
+    ).toThrow(/A non-empty clarificationQuestion is required/);
+  });
+
   it("explains commands with security warnings", async () => {
     const explanation = await planner.explain("rm -rf build");
     expect(explanation).toContain("forcefully");

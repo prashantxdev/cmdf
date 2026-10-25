@@ -8,111 +8,234 @@ export const RiskLevelSchema = z.enum([
 
 export const ListFilesActionSchema = z.object({
   type: z.literal("list_files"),
-  description: z.string(),
-  path: z.string().default("."),
-  includeHidden: z.boolean().optional().default(false),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
+  path: z
+    .string()
+    .nullish()
+    .transform((val) => (val && val.trim() ? val.trim() : "."))
+    .default("."),
+  includeHidden: z
+    .boolean()
+    .nullish()
+    .transform((val) => Boolean(val))
+    .default(false),
 });
 
 export const CreateDirectoryActionSchema = z.object({
   type: z.literal("create_directory"),
-  description: z.string(),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
   path: z.string(),
 });
 
 export const CreateFileActionSchema = z.object({
   type: z.literal("create_file"),
-  description: z.string(),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
   path: z.string(),
-  content: z.string(),
-  overwrite: z.boolean().optional().default(false),
+  content: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
+  overwrite: z
+    .boolean()
+    .nullish()
+    .transform((val) => Boolean(val))
+    .default(false),
 });
 
 export const ReadFileActionSchema = z.object({
   type: z.literal("read_file"),
-  description: z.string(),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
   path: z.string(),
-  maxLines: z.number().optional().default(200),
+  maxLines: z
+    .number()
+    .nullish()
+    .transform((val) => val ?? 200)
+    .default(200),
 });
 
 export const MoveActionSchema = z.object({
   type: z.literal("move"),
-  description: z.string(),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
   source: z.string(),
   destination: z.string(),
 });
 
 export const RenameActionSchema = z.object({
   type: z.literal("rename"),
-  description: z.string(),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
   source: z.string(),
   destination: z.string(),
 });
 
 export const CopyActionSchema = z.object({
   type: z.literal("copy"),
-  description: z.string(),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
   source: z.string(),
   destination: z.string(),
 });
 
 export const DeleteFileActionSchema = z.object({
   type: z.literal("delete_file"),
-  description: z.string(),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
   path: z.string(),
 });
 
 export const SearchFilesActionSchema = z.object({
   type: z.literal("search_files"),
-  description: z.string(),
-  path: z.string().default("."),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
+  path: z
+    .string()
+    .nullish()
+    .transform((val) => (val && val.trim() ? val.trim() : "."))
+    .default("."),
   pattern: z.string(),
 });
 
 export const SearchContentActionSchema = z.object({
   type: z.literal("search_content"),
-  description: z.string(),
-  path: z.string().default("."),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
+  path: z
+    .string()
+    .nullish()
+    .transform((val) => (val && val.trim() ? val.trim() : "."))
+    .default("."),
   query: z.string(),
-  extension: z.string().optional(),
+  extension: z
+    .string()
+    .nullish()
+    .transform((val) => (val && val.trim() ? val.trim() : undefined)),
 });
 
 export const GitInitActionSchema = z.object({
   type: z.literal("git_init"),
-  description: z.string(),
-  path: z.string().default("."),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
+  path: z
+    .string()
+    .nullish()
+    .transform((val) => (val && val.trim() ? val.trim() : "."))
+    .default("."),
 });
 
 export const GitStatusActionSchema = z.object({
   type: z.literal("git_status"),
-  description: z.string(),
-  path: z.string().default("."),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
+  path: z
+    .string()
+    .nullish()
+    .transform((val) => (val && val.trim() ? val.trim() : "."))
+    .default("."),
 });
 
 export const GitLogActionSchema = z.object({
   type: z.literal("git_log"),
-  description: z.string(),
-  path: z.string().default("."),
-  count: z.number().optional().default(5),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
+  path: z
+    .string()
+    .nullish()
+    .transform((val) => (val && val.trim() ? val.trim() : "."))
+    .default("."),
+  count: z
+    .number()
+    .nullish()
+    .transform((val) => val ?? 5)
+    .default(5),
 });
 
 export const NpmInstallActionSchema = z.object({
   type: z.literal("npm_install"),
-  description: z.string(),
-  packages: z.array(z.string()),
-  dev: z.boolean().optional().default(false),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
+  packages: z
+    .array(z.string())
+    .nullish()
+    .transform((val) => val ?? [])
+    .default([]),
+  dev: z
+    .boolean()
+    .nullish()
+    .transform((val) => Boolean(val))
+    .default(false),
 });
 
 export const NpmRunActionSchema = z.object({
   type: z.literal("npm_run"),
-  description: z.string(),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
   script: z.string(),
 });
 
 export const ShellCommandActionSchema = z.object({
   type: z.literal("shell_command"),
-  description: z.string(),
+  description: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
   command: z.string(),
-  explanation: z.string(),
+  explanation: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
 });
 
 export const ActionSchema = z.discriminatedUnion("type", [
@@ -138,17 +261,59 @@ export const PlanStepSchema = z.object({
   id: z.number(),
   action: ActionSchema,
   risk: RiskLevelSchema,
-  explanation: z.string(),
-  affectsData: z.boolean(),
-  targetPaths: z.array(z.string()).default([]),
+  explanation: z
+    .string()
+    .nullish()
+    .transform((val) => val ?? "")
+    .default(""),
+  affectsData: z
+    .boolean()
+    .nullish()
+    .transform((val) => Boolean(val))
+    .default(false),
+  targetPaths: z
+    .array(z.string())
+    .nullish()
+    .transform((val) => val ?? [])
+    .default([]),
 });
 
-export const ActionPlanSchema = z.object({
-  intent: z.string(),
-  assumptions: z.array(z.string()).default([]),
-  steps: z.array(PlanStepSchema),
-  overallRisk: RiskLevelSchema,
-  summary: z.string(),
-  requiresClarification: z.boolean().optional().default(false),
-  clarificationQuestion: z.string().optional(),
-});
+export const ActionPlanSchema = z
+  .object({
+    intent: z.string(),
+    assumptions: z
+      .array(z.string())
+      .nullish()
+      .transform((val) => val ?? [])
+      .default([]),
+    steps: z.array(PlanStepSchema),
+    overallRisk: RiskLevelSchema,
+    summary: z.string(),
+    requiresClarification: z
+      .boolean()
+      .nullish()
+      .transform((val) => Boolean(val))
+      .default(false),
+    clarificationQuestion: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => (val && val.trim().length > 0 ? val.trim() : null))
+      .default(null),
+  })
+  .refine(
+    (data) => {
+      if (data.requiresClarification) {
+        return (
+          typeof data.clarificationQuestion === "string" &&
+          data.clarificationQuestion.trim().length > 0
+        );
+      }
+      return true;
+    },
+    {
+      message:
+        "A non-empty clarificationQuestion is required when requiresClarification is true",
+      path: ["clarificationQuestion"],
+    },
+  );

@@ -20,7 +20,7 @@ export type RiskLevel = "read-only" | "modifying" | "destructive";
 
 export interface BaseAction {
   type: ActionType;
-  description: string;
+  description?: string;
 }
 
 export interface ListFilesAction extends BaseAction {
@@ -37,7 +37,7 @@ export interface CreateDirectoryAction extends BaseAction {
 export interface CreateFileAction extends BaseAction {
   type: "create_file";
   path: string;
-  content: string;
+  content?: string;
   overwrite?: boolean;
 }
 
@@ -150,7 +150,7 @@ export interface ActionPlan {
   overallRisk: RiskLevel;
   summary: string;
   requiresClarification?: boolean;
-  clarificationQuestion?: string;
+  clarificationQuestion?: string | null;
 }
 
 export interface AIPlanningContext {

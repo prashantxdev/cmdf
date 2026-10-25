@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import chalk from "chalk";
 import { getEnvironmentInfo } from "./env-detect.js";
-import { getResolvedConfig, getConfigDir } from "../config/index.js";
+import {
+  getResolvedConfig,
+  getConfigDir,
+  maskApiKey,
+  checkConfigPermissions,
+} from "../config/index.js";
 import { GeminiAIProvider } from "../ai/gemini.js";
 
 export interface DoctorCheckResult {
@@ -96,12 +101,12 @@ export async function runDoctorChecks(
       : undefined,
   });
 
-  // 6. User Config Directory
+  // 6. User Config Directory & Permissions
   const configDir = getConfigDir();
   let configDirOk = false;
   try {
     if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
+      fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
     }
     configDirOk = true;
   } catch {
@@ -117,7 +122,18 @@ export async function runDoctorChecks(
       : `Cannot write to ${configDir}`,
   });
 
-  // 7. AI Provider Setup
+  const permCheck = checkConfigPermissions();
+  results.push({
+    category: "Configuration",
+    name: "File Security",
+    passed: permCheck.isSecure,
+    message: permCheck.note,
+    remedy: !permCheck.isSecure
+      ? "Run 'chmod 600 ~/.cmdf/config.json' to secure your stored credentials."
+      : undefined,
+  });
+
+  // 7. AI Provider Setup (Local Validation)
   const hasApiKey = Boolean(
     config.geminiApiKey && config.geminiApiKey.trim().length > 0,
   );
@@ -126,10 +142,10 @@ export async function runDoctorChecks(
     name: "Gemini API Key",
     passed: hasApiKey,
     message: hasApiKey
-      ? `GEMINI_API_KEY configured (length: ${config.geminiApiKey?.length} chars, stored securely)`
+      ? `Configured via ${config.apiKeySource}: ${maskApiKey(config.geminiApiKey)} (${config.geminiApiKey?.length} chars)`
       : "GEMINI_API_KEY is not configured",
     remedy: !hasApiKey
-      ? "Create a .env file or set GEMINI_API_KEY environment variable. Get a free key at https://aistudio.google.com/"
+      ? "Run 'cmdf config set-key' or set GEMINI_API_KEY. Get a free key at https://aistudio.google.com/apikey"
       : undefined,
   });
 
@@ -140,7 +156,7 @@ export async function runDoctorChecks(
     message: `Model: ${config.model} (Provider: ${config.provider})`,
   });
 
-  // Test live connection if key is present
+  // 8. Live API Connectivity Check (Separate from local validation)
   if (hasApiKey && config.provider === "gemini") {
     try {
       const provider = new GeminiAIProvider(
@@ -151,23 +167,31 @@ export async function runDoctorChecks(
       const connResult = await provider.testConnectivity();
       results.push({
         category: "AI Provider",
-        name: "API Connectivity",
+        name: "Live API Connectivity",
         passed: connResult.ok,
         message: connResult.message,
         remedy: !connResult.ok
-          ? "Run 'cmdf config' or check your GEMINI_API_KEY/GEMINI_MODEL in .env"
+          ? "Check key validity, quota limits, or model availability at https://aistudio.google.com/"
           : undefined,
       });
     } catch (err: unknown) {
       results.push({
         category: "AI Provider",
-        name: "API Connectivity",
+        name: "Live API Connectivity",
         passed: false,
         message: `API connection failed: ${err instanceof Error ? err.message : String(err)}`,
         remedy:
           "Verify internet connection, API key, and model availability at Google AI Studio.",
       });
     }
+  } else if (!hasApiKey && config.provider === "gemini") {
+    results.push({
+      category: "AI Provider",
+      name: "Live API Connectivity",
+      passed: false,
+      message: "Skipped (no Gemini API key configured)",
+      remedy: "Run 'cmdf config set-key' to configure your API key.",
+    });
   }
 
   return results;

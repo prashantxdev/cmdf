@@ -117,3 +117,35 @@ export function formatExecutionResult(result: PlanExecutionResult): string {
 
   return lines.join("\n");
 }
+
+export function formatFirstRunSetup(): string {
+  const header = chalk.bold.cyan(
+    "\nWelcome to cmdf — Your intent. One command.\n",
+  );
+  const intro =
+    "cmdf operates on a Bring Your Own Key (BYOK) model.\n" +
+    "Every user connects their own Gemini API key. Requests run directly\n" +
+    "from your local CLI to Google's API — no proxy, no backend server.\n";
+
+  const step1 =
+    chalk.bold.yellow("1. Get a Gemini API key (free tier available):\n") +
+    chalk.cyan("   https://aistudio.google.com/apikey\n");
+
+  const step2 =
+    chalk.bold.yellow(
+      "2. Save your key in cmdf (stored with owner-only permissions):\n",
+    ) + chalk.white.bold("   cmdf config set-key\n");
+
+  const altHeader = chalk.bold.yellow("Alternative (Environment Variable):\n");
+  const altBody =
+    process.platform === "win32"
+      ? chalk.dim('   PowerShell:  $env:GEMINI_API_KEY="your-api-key"\n') +
+        chalk.dim("   CMD:         set GEMINI_API_KEY=your-api-key\n")
+      : chalk.dim('   macOS/Linux: export GEMINI_API_KEY="your-api-key"\n');
+
+  const footer = chalk.gray(
+    "\nRun 'cmdf doctor' anytime to verify your environment and API connectivity.\n",
+  );
+
+  return `${header}${intro}\n${step1}\n${step2}\n${altHeader}${altBody}${footer}`;
+}
