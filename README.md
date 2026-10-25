@@ -2,11 +2,11 @@
 
 > **Your intent. One command.**
 
-[![npm version](https://img.shields.io/npm/v/cmdf.svg)](https://www.npmjs.com/package/cmdf)
+[![npm version](https://img.shields.io/npm/v/@prashantxdev/cmdf.svg)](https://www.npmjs.com/package/@prashantxdev/cmdf)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node: >=18.0.0](https://img.shields.io/badge/Node-%3E%3D18.0.0-green.svg)](https://nodejs.org/)
 [![TypeScript: 5.7](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
-[![Tests: Vitest](https://img.shields.io/badge/Tests-Vitest%20(69%20passed)-purple.svg)](https://vitest.dev/)
+[![Tests: Vitest](https://img.shields.io/badge/Tests-Vitest%20(78%20passed)-purple.svg)](https://vitest.dev/)
 
 **cmdf** is a cross-platform, AI-powered command-line terminal assistant inspired by the polished developer experience of Builder.io AI Shell. It translates your natural-language intent into structured, inspectable action plans and safely executes terminal, filesystem, and developer tasks.
 
@@ -20,7 +20,7 @@ Inspired by the clean interaction design of Builder.io AI Shell, `cmdf` provides
 
 ```text
 1. Install globally:
-   $ npm install -g cmdf
+   $ npm install -g @prashantxdev/cmdf
 
 2. Quick interactive setup:
    $ cmdf config
@@ -121,7 +121,7 @@ sequenceDiagram
 ### Install Globally from npm
 
 ```bash
-npm install -g cmdf
+npm install -g @prashantxdev/cmdf
 ```
 
 ### Verify Installation
@@ -488,4 +488,4 @@ This project is independently developed and licensed under the [MIT License](LIC
 Reference inspiration: [Builder.io AI Shell](https://github.com/BuilderIO/ai-shell) (MIT License). Interaction design principles (approval, revision, and concise terminal presentation) have been adapted and implemented specifically for `cmdf`'s TypeScript + Google GenAI architecture.
 
 - **GitHub Repository**: [https://github.com/prashantxdev/cmdf](https://github.com/prashantxdev/cmdf)
-- **npm Package**: [https://www.npmjs.com/package/cmdf](https://www.npmjs.com/package/cmdf)
+- **npm Package**: [https://www.npmjs.com/package/@prashantxdev/cmdf](https://www.npmjs.com/package/@prashantxdev/cmdf)

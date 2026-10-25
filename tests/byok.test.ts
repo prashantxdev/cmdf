@@ -277,4 +277,18 @@ describe("Package & Source Code Security Audit", () => {
     expect(pkg.files).not.toContain(".env");
     expect(pkg.files).not.toContain(".env.example");
   });
+
+  it("package.json bin field points to valid executable with node shebang", () => {
+    const pkgPath = path.resolve(process.cwd(), "package.json");
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+
+    expect(pkg.bin).toBeDefined();
+    expect(pkg.bin.cmdf).toBe("dist/cli.js");
+
+    const cliPath = path.resolve(process.cwd(), pkg.bin.cmdf);
+    expect(fs.existsSync(cliPath)).toBe(true);
+
+    const firstLine = fs.readFileSync(cliPath, "utf-8").split("\n")[0].trim();
+    expect(firstLine).toBe("#!/usr/bin/env node");
+  });
 });

@@ -1,7 +1,10 @@
 {
-  "name": "cmdf",
+  "name": "@prashantxdev/cmdf",
   "version": "1.0.0",
   "description": "AI-Powered Natural Language Terminal Assistant — Your intent. One command.",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "cli",
     "terminal",
@@ -26,7 +29,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "cmdf": "./dist/cli.js"
+    "cmdf": "dist/cli.js"
   },
   "files": [
     "dist",
