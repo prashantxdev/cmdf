@@ -74,7 +74,11 @@ Follow the prompts displayed by cmdf to complete each task. Verify the results i
 
 ## Demo Video
 
-[![Watch the cmdf Setup Tutorial](docs/cmdf-thumbnail.png)](docs/cmdf%20setup.mp4)
+<video src="docs/cmdf%20setup.mp4" controls width="100%">
+  <a href="docs/cmdf%20setup.mp4">Watch the cmdf Setup Tutorial (docs/cmdf setup.mp4)</a>
+</video>
+
+[Watch the cmdf Setup Tutorial (docs/cmdf setup.mp4)](docs/cmdf%20setup.mp4)
 
 *Watch how to install cmdf, configure your Gemini API key, verify your setup, and run your first commands.*
 
