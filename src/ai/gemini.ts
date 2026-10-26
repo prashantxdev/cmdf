@@ -4,6 +4,7 @@ import type { AIProvider, ConnectivityResult } from "./provider.js";
 import type { ActionPlan, AIPlanningContext } from "./types.js";
 import { ActionPlanSchema } from "./schemas.js";
 import { redactSecrets } from "../utils/redactor.js";
+import { DEFAULT_CONFIG } from "../config/index.js";
 
 export type GeminiErrorCategory =
   | "missing_key"
@@ -22,6 +23,14 @@ export interface ClassifiedGeminiError {
   isRetryable: boolean;
   message: string;
   originalError: unknown;
+}
+
+export function formatTimeoutDuration(ms: number): string {
+  if (ms >= 1000 && ms % 1000 === 0) {
+    const s = ms / 1000;
+    return `${s} second${s === 1 ? "" : "s"}`;
+  }
+  return `${ms}ms`;
 }
 
 export function classifyGeminiError(
@@ -57,8 +66,38 @@ export function classifyGeminiError(
 
   // Redact any raw secrets from error messages
   const cleanMsg = redactSecrets(rawMsg, apiKey ? [apiKey] : []);
+  const lowerMsg = cleanMsg.toLowerCase();
 
-  // 1. Authentication / Permissions
+  // 1. Model Not Found / Unavailable / Unsupported (Check before auth to catch 404 model errors cleanly)
+  const isModelUnavailable =
+    status === 404 ||
+    lowerMsg.includes("not found") ||
+    lowerMsg.includes("not_found") ||
+    lowerMsg.includes("is no longer available") ||
+    lowerMsg.includes("unsupported model") ||
+    lowerMsg.includes("model not found") ||
+    lowerMsg.includes("invalid model") ||
+    (lowerMsg.includes("model") &&
+      (lowerMsg.includes("unsupported") ||
+        lowerMsg.includes("unavailable") ||
+        lowerMsg.includes("inaccessible") ||
+        lowerMsg.includes("does not exist")));
+
+  if (isModelUnavailable) {
+    return {
+      category: "model_not_found",
+      isRetryable: false,
+      message:
+        `The configured Gemini model "${model}" is unavailable or unsupported.\n\n` +
+        "Check that your model ID is supported by your Gemini API key and current API access.\n" +
+        "You can change the model using:\n" +
+        "cmdf config set model <model-id>\n\n" +
+        "Then retry your command.",
+      originalError: err,
+    };
+  }
+
+  // 2. Authentication / Permissions
   if (
     status === 401 ||
     status === 403 ||
@@ -72,58 +111,40 @@ export function classifyGeminiError(
       isRetryable: false,
       message:
         "Invalid or unauthorized Gemini API key.\n" +
-        "Please update your key using 'cmdf config set-key' or verify your GEMINI_API_KEY environment variable.\n" +
-        "Obtain or regenerate your key at: https://aistudio.google.com/apikey",
+        "Please verify your configured API key and its access permissions.\n" +
+        "You can update your key using 'cmdf config set-key' or verify your GEMINI_API_KEY environment variable.\n" +
+        "Manage or generate your API key at: https://aistudio.google.com/apikey",
       originalError: err,
     };
   }
 
-  // 2. Model Not Found / Decommissioned
-  if (
-    status === 404 ||
-    cleanMsg.includes("not found") ||
-    cleanMsg.includes("NOT_FOUND") ||
-    cleanMsg.includes("is no longer available")
-  ) {
-    return {
-      category: "model_not_found",
-      isRetryable: false,
-      message:
-        `Gemini model "${model}" was not found or is not available for your Google account.\n` +
-        "Please check your GEMINI_MODEL setting in .env or run 'cmdf doctor' to inspect your setup.\n" +
-        "Tip: You can switch to a supported model like gemini-3.5-flash by running: cmdf config set model gemini-3.5-flash",
-      originalError: err,
-    };
-  }
-
-  // 3. Daily Quota Exhausted vs Per-Minute Rate Limit (429)
+  // 3. API Quota & Rate Limit (429, RESOURCE_EXHAUSTED)
   if (
     status === 429 ||
     cleanMsg.includes("RESOURCE_EXHAUSTED") ||
-    cleanMsg.includes("rate limit") ||
-    cleanMsg.includes("Quota exceeded")
+    lowerMsg.includes("rate limit") ||
+    lowerMsg.includes("quota exceeded") ||
+    lowerMsg.includes("too many requests")
   ) {
     const isDaily =
-      cleanMsg.toLowerCase().includes("per day") ||
-      cleanMsg.toLowerCase().includes("daily") ||
+      lowerMsg.includes("per day") ||
+      lowerMsg.includes("daily") ||
       cleanMsg.includes("free_tier_requests_per_day") ||
       cleanMsg.includes("generate_content_free_tier_requests") ||
-      cleanMsg.includes("limit exceeded on Free Tier");
+      lowerMsg.includes("limit exceeded on free tier");
 
     if (isDaily) {
       return {
         category: "daily_quota_exhausted",
-        isRetryable: false, // Daily quota cannot be fixed by immediate retries
+        isRetryable: false,
         message:
           `Your daily Gemini API quota has been exhausted for model "${model}" (429 RESOURCE_EXHAUSTED).\n` +
-          "Retrying will not resolve this until your daily quota resets in Google AI Studio.\n" +
-          "Google AI Studio Free Tier limits daily requests for preview models (e.g. 20 requests/day).\n\n" +
-          "Remedies:\n" +
-          "  1. Switch to a model with higher free-tier quota (e.g. gemini-3.5-flash):\n" +
-          "     Run: cmdf config set model gemini-3.5-flash\n" +
-          "     (Or set GEMINI_MODEL=gemini-3.5-flash in your .env file)\n" +
-          "  2. Wait for your daily quota to reset in Google AI Studio: https://aistudio.google.com/\n" +
-          "  3. Check rate limits & usage: https://ai.google.dev/gemini-api/docs/rate-limits",
+          "Retrying will not resolve this until your daily quota resets in Google AI Studio.\n\n" +
+          "Recommendations:\n" +
+          "  1. Check your Gemini API quota and billing settings at: https://aistudio.google.com/\n" +
+          "  2. Switch to an alternate model (e.g. gemini-3.5-flash) using: cmdf config set model <model-id>\n" +
+          "  3. Wait for your daily quota to reset.\n" +
+          "  4. Learn more about Gemini rate limits: https://ai.google.dev/gemini-api/docs/rate-limits",
         originalError: err,
       };
     }
@@ -134,30 +155,33 @@ export function classifyGeminiError(
       message:
         "Gemini API rate limit or quota exceeded (429 RESOURCE_EXHAUSTED).\n" +
         "Your project's per-minute request limit has been reached.\n" +
-        "Please wait a moment before trying again, or check your quota dashboard at: https://aistudio.google.com/\n" +
+        "Please check your Gemini API quota and billing settings at: https://aistudio.google.com/\n" +
+        "Wait a moment before retrying temporary rate limits.\n" +
         "Learn more about Gemini rate limits: https://ai.google.dev/gemini-api/docs/rate-limits",
       originalError: err,
     };
   }
 
   // 4. Timeouts & Deadlines
-  if (
+  const isTimeout =
     status === 504 ||
     cleanMsg.includes("DEADLINE_EXCEEDED") ||
-    cleanMsg.includes("timed out after") ||
-    cleanMsg.includes("Deadline expired")
-  ) {
+    lowerMsg.includes("timed out") ||
+    lowerMsg.includes("deadline expired") ||
+    lowerMsg.includes("request timeout");
+
+  if (isTimeout) {
+    const durationStr = formatTimeoutDuration(timeoutMs);
+    const suggestedTimeoutMs = timeoutMs < 60000 ? 60000 : timeoutMs + 30000;
+
     return {
       category: "timeout",
       isRetryable: true,
       message:
-        `AI planning request timed out after ${timeoutMs}ms.\n` +
-        `Gemini servers may be experiencing temporary latency or reasoning backlog on model "${model}".\n\n` +
-        "Remedies:\n" +
-        "  1. Switch to a faster model with lower latency (e.g. gemini-3.5-flash):\n" +
-        "     Run: cmdf config set model gemini-3.5-flash\n" +
-        "  2. Increase timeout by setting GEMINI_TIMEOUT_MS in .env (e.g. GEMINI_TIMEOUT_MS=60000)\n" +
-        "  3. Try again in a few moments.",
+        `Gemini planning request timed out after ${durationStr}.\n` +
+        "The AI provider may be experiencing latency.\n" +
+        "Try again or increase the timeout using:\n" +
+        `cmdf config set timeoutMs ${suggestedTimeoutMs}`,
       originalError: err,
     };
   }
@@ -168,15 +192,16 @@ export function classifyGeminiError(
     status === 502 ||
     status === 500 ||
     cleanMsg.includes("UNAVAILABLE") ||
-    cleanMsg.includes("high demand") ||
-    cleanMsg.includes("overloaded")
+    lowerMsg.includes("high demand") ||
+    lowerMsg.includes("overloaded") ||
+    lowerMsg.includes("service unavailable")
   ) {
     return {
       category: "unavailable",
       isRetryable: true,
       message:
-        `Gemini model "${model}" is currently experiencing temporary high demand (503 UNAVAILABLE).\n` +
-        "Spikes in demand are usually temporary. Please try again in a few moments, or switch to an alternate model (e.g. gemini-3.5-flash) with: cmdf config set model gemini-3.5-flash",
+        `Gemini model "${model}" is currently experiencing temporary high demand (${status ?? "503"} UNAVAILABLE).\n` +
+        "Spikes in demand are usually temporary. Please try again in a few moments, or switch to an alternate model using: cmdf config set model <model-id>",
       originalError: err,
     };
   }
@@ -187,14 +212,16 @@ export function classifyGeminiError(
     cleanMsg.includes("ECONNRESET") ||
     cleanMsg.includes("ECONNREFUSED") ||
     cleanMsg.includes("ETIMEDOUT") ||
-    cleanMsg.includes("fetch failed")
+    lowerMsg.includes("fetch failed") ||
+    lowerMsg.includes("network error") ||
+    lowerMsg.includes("networkerror")
   ) {
     return {
       category: "network",
       isRetryable: true,
       message:
         "Network error connecting to Gemini API.\n" +
-        "Please check your internet connection and DNS settings.",
+        "A network failure may be responsible. Please check your internet connection and network connectivity.",
       originalError: err,
     };
   }
@@ -239,8 +266,8 @@ export class GeminiAIProvider implements AIProvider {
 
   constructor(
     apiKey?: string,
-    model: string = "gemini-3.8-flash",
-    timeoutMs: number = 45000,
+    model: string = DEFAULT_CONFIG.model,
+    timeoutMs: number = DEFAULT_CONFIG.timeoutMs,
     clientOverride?: unknown,
   ) {
     this.apiKey = apiKey;
@@ -266,7 +293,9 @@ export class GeminiAIProvider implements AIProvider {
    * Tests authentication, model availability, and actual generation capability
    * using a minimal generateContent probe without executing commands or generating large outputs.
    */
-  async testConnectivity(): Promise<ConnectivityResult> {
+  async testConnectivity(
+    timeoutMsOverride?: number,
+  ): Promise<ConnectivityResult> {
     if (!this.client || !this.apiKey) {
       return {
         ok: false,
@@ -282,7 +311,7 @@ export class GeminiAIProvider implements AIProvider {
     const abortController = new AbortController();
     let timerId: NodeJS.Timeout | null = null;
     let requestCompleted = false;
-    const testTimeoutMs = 15000;
+    const testTimeoutMs = timeoutMsOverride ?? this.timeoutMs;
 
     try {
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -295,7 +324,9 @@ export class GeminiAIProvider implements AIProvider {
             }
           }
           reject(
-            new Error(`Doctor connectivity check timed out after ${testTimeoutMs}ms`),
+            new Error(
+              `Doctor connectivity check timed out after ${testTimeoutMs}ms`,
+            ),
           );
         }, testTimeoutMs);
       });
@@ -453,7 +484,9 @@ JSON Output Format:
                 // Ignore
               }
             }
-            reject(new Error(`AI request timed out after ${attemptTimeoutMs}ms`));
+            reject(
+              new Error(`AI request timed out after ${attemptTimeoutMs}ms`),
+            );
           }, attemptTimeoutMs);
         });
 
@@ -531,7 +564,11 @@ JSON Output Format:
 
         // Bounded retry with backoff only for retryable errors if budget remains
         const timeRemaining = overallDeadline - Date.now();
-        if (classified.isRetryable && attempt < maxAttempts && timeRemaining > 0) {
+        if (
+          classified.isRetryable &&
+          attempt < maxAttempts &&
+          timeRemaining > 0
+        ) {
           // If request already timed out, do not retry if insufficient budget remains
           if (classified.category === "timeout" && timeRemaining < 3000) {
             throw new Error(`AI planning failed:\n${classified.message}`);

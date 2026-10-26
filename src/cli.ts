@@ -3,7 +3,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import ora from "ora";
-import { select, input, confirm, password } from "@inquirer/prompts";
+import { select, input, password } from "@inquirer/prompts";
 import type { ActionPlan } from "./ai/types.js";
 import {
   getResolvedConfig,
@@ -13,6 +13,7 @@ import {
   deleteStoredApiKey,
   maskApiKey,
   checkConfigPermissions,
+  validateTimeoutMs,
 } from "./config/index.js";
 import { getEnvironmentInfo } from "./utils/env-detect.js";
 import {
@@ -23,7 +24,6 @@ import {
 } from "./utils/formatters.js";
 import { AIPlanner } from "./ai/planner.js";
 import { PlanExecutor } from "./executor/index.js";
-import { SecurityPolicy } from "./security/policy.js";
 import {
   loadHistory,
   clearHistory,
@@ -32,7 +32,7 @@ import {
 import { runDoctorChecks, printDoctorResults } from "./utils/doctor.js";
 import { runInteractiveSession } from "./interactive/session.js";
 
-const VERSION = "1.0.0";
+const VERSION = "1.0.2";
 
 const program = new Command();
 
@@ -79,9 +79,6 @@ program
     console.log(chalk.white(`Request: ${chalk.bold(instruction)}`));
 
     const planner = AIPlanner.fromConfig(config);
-    const security = new SecurityPolicy({
-      autoApproveReadOnly: options.yes || config.autoApproveReadOnly,
-    });
 
     let currentInstruction = instruction;
     let plan!: ActionPlan;
@@ -211,7 +208,9 @@ program
 
         const trimmedRev = revisionPrompt.trim();
         if (!trimmedRev) {
-          console.log(chalk.yellow("No revision entered. Showing options again."));
+          console.log(
+            chalk.yellow("No revision entered. Showing options again."),
+          );
           continue;
         }
 
@@ -379,10 +378,14 @@ program
     "Inspect environment, workspace boundaries, dependencies, and AI provider setup",
   )
   .option("-m, --model <name>", "Gemini model to diagnose")
+  .option("-t, --timeout <ms>", "AI request timeout in milliseconds")
   .action(async (options) => {
+    const parentOpts = program.opts();
+    const timeoutRaw = options.timeout || parentOpts.timeout;
     const spinner = ora("Running system diagnostics...").start();
     const results = await runDoctorChecks({
-      model: options.model,
+      model: options.model || parentOpts.model,
+      timeoutMs: timeoutRaw ? parseInt(timeoutRaw, 10) : undefined,
     });
     spinner.stop();
     printDoctorResults(results);
@@ -479,6 +482,36 @@ program
           );
           process.exitCode = 1;
         }
+        return;
+      }
+
+      if (key === "timeoutMs") {
+        const valCheck = validateTimeoutMs(value);
+        if (!valCheck.valid) {
+          console.error(chalk.red(`\nError: ${valCheck.error}\n`));
+          process.exitCode = 1;
+          return;
+        }
+        saveUserConfig({ timeoutMs: valCheck.value });
+        console.log(
+          chalk.green(
+            `\nUpdated configuration: timeoutMs = ${valCheck.value}\n`,
+          ),
+        );
+        return;
+      }
+
+      if (key === "model") {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          console.error(chalk.red("\nError: Model name cannot be empty.\n"));
+          process.exitCode = 1;
+          return;
+        }
+        saveUserConfig({ model: trimmed });
+        console.log(
+          chalk.green(`\nUpdated configuration: model = ${trimmed}\n`),
+        );
         return;
       }
 
@@ -585,9 +618,10 @@ program
             message: chalk.bold("Choose default AI request timeout:"),
             choices: [
               { name: "30 seconds (30000ms)", value: "30000" },
-              { name: "45 seconds (45000ms - recommended)", value: "45000" },
-              { name: "60 seconds (60000ms)", value: "60000" },
+              { name: "45 seconds (45000ms)", value: "45000" },
+              { name: "60 seconds (60000ms - recommended)", value: "60000" },
               { name: "90 seconds (90000ms)", value: "90000" },
+              { name: "120 seconds (120000ms)", value: "120000" },
             ],
             default: String(resolved.timeoutMs),
           });
@@ -595,11 +629,11 @@ program
           return;
         }
 
-        const parsed = parseInt(selectedTimeout, 10);
-        if (!isNaN(parsed) && parsed >= 5000) {
-          saveUserConfig({ timeoutMs: parsed });
+        const valCheck = validateTimeoutMs(selectedTimeout);
+        if (valCheck.valid && valCheck.value) {
+          saveUserConfig({ timeoutMs: valCheck.value });
           console.log(
-            chalk.green.bold(`\n✔ AI timeout set to: ${parsed}ms\n`),
+            chalk.green.bold(`\n✔ AI timeout set to: ${valCheck.value}ms\n`),
           );
         }
         return;

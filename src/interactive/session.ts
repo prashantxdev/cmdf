@@ -1,4 +1,4 @@
-import { select, input, confirm } from "@inquirer/prompts";
+import { select, input } from "@inquirer/prompts";
 import chalk from "chalk";
 import ora from "ora";
 import type { ActionPlan } from "../ai/types.js";
@@ -12,12 +12,11 @@ import {
 } from "../utils/formatters.js";
 import { AIPlanner } from "../ai/planner.js";
 import { PlanExecutor } from "../executor/index.js";
-import { SecurityPolicy } from "../security/policy.js";
 import { saveHistoryEntry } from "../history/index.js";
 
 export async function runInteractiveSession(
   config: CmdfConfig,
-  version: string = "1.0.0",
+  version: string = "1.0.2",
 ): Promise<void> {
   const env = getEnvironmentInfo(config.shell);
   console.log(formatBanner(version, env, config.workspace));
@@ -34,9 +33,6 @@ export async function runInteractiveSession(
   );
 
   const planner = AIPlanner.fromConfig(config);
-  const security = new SecurityPolicy({
-    autoApproveReadOnly: config.autoApproveReadOnly,
-  });
 
   while (true) {
     let userInput = "";
@@ -103,7 +99,9 @@ export async function runInteractiveSession(
         }
 
         if (!clarificationAnswer.trim()) {
-          console.log(chalk.yellow("\nRequest cancelled due to empty input.\n"));
+          console.log(
+            chalk.yellow("\nRequest cancelled due to empty input.\n"),
+          );
           plan = null;
           break;
         }
@@ -187,7 +185,9 @@ export async function runInteractiveSession(
 
         const trimmedRev = revisionPrompt.trim();
         if (!trimmedRev) {
-          console.log(chalk.yellow("No revision entered. Showing options again."));
+          console.log(
+            chalk.yellow("No revision entered. Showing options again."),
+          );
           continue;
         }
 

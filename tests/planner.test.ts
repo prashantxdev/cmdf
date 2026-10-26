@@ -149,7 +149,9 @@ describe("AIPlanner & Structured Planning", () => {
     });
 
     expect(parsed.requiresClarification).toBe(true);
-    expect(parsed.clarificationQuestion).toBe("What should the folder be named?");
+    expect(parsed.clarificationQuestion).toBe(
+      "What should the folder be named?",
+    );
   });
 
   it("rejects when requiresClarification is true but clarificationQuestion is null or empty", () => {

@@ -162,7 +162,7 @@ export async function runDoctorChecks(
       const provider = new GeminiAIProvider(
         config.geminiApiKey,
         config.model,
-        15000,
+        config.timeoutMs,
       );
       const connResult = await provider.testConnectivity();
       results.push({

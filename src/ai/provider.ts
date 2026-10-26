@@ -11,7 +11,7 @@ export interface ConnectivityResult {
 export interface AIProvider {
   name: string;
   isAvailable(): Promise<boolean>;
-  testConnectivity?(): Promise<ConnectivityResult>;
+  testConnectivity?(timeoutMs?: number): Promise<ConnectivityResult>;
   generatePlan(prompt: string, context: AIPlanningContext): Promise<ActionPlan>;
   explainCommand(command: string): Promise<string>;
 }

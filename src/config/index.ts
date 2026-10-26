@@ -31,14 +31,55 @@ export function getConfigFilePath(): string {
   return path.join(getConfigDir(), CONFIG_FILE_NAME);
 }
 
-function parseTimeoutMs(
+export const DEFAULT_CONFIG = {
+  model: "gemini-3.5-flash",
+  timeoutMs: 60_000,
+  provider: "gemini" as const,
+  outputFormat: "text" as const,
+  historyLimit: 100,
+  autoApproveReadOnly: false,
+};
+
+export const MIN_TIMEOUT_MS = 1000;
+export const MAX_TIMEOUT_MS = 600_000; // 10 minutes maximum
+
+export function validateTimeoutMs(val: unknown): {
+  valid: boolean;
+  value?: number;
+  error?: string;
+} {
+  if (val === undefined || val === null || val === "") {
+    return { valid: false, error: "timeoutMs is required." };
+  }
+  const str = String(val).trim();
+  if (!/^\d+$/.test(str)) {
+    return {
+      valid: false,
+      error: `Invalid timeoutMs: "${str}" is not a positive integer.`,
+    };
+  }
+  const num = parseInt(str, 10);
+  if (num < MIN_TIMEOUT_MS || num > MAX_TIMEOUT_MS) {
+    return {
+      valid: false,
+      error: `Invalid timeoutMs: Value must be between ${MIN_TIMEOUT_MS} and ${MAX_TIMEOUT_MS} ms (got ${num}).`,
+    };
+  }
+  return { valid: true, value: num };
+}
+
+export function parseTimeoutMs(
   val?: string | number,
-  defaultVal: number = 45000,
+  defaultVal: number = DEFAULT_CONFIG.timeoutMs,
 ): number {
-  if (typeof val === "number") return val;
-  if (!val) return defaultVal;
-  const parsed = parseInt(val, 10);
-  return isNaN(parsed) || parsed < 5000 ? defaultVal : parsed;
+  if (typeof val === "number") {
+    return Number.isFinite(val) && val > 0 ? Math.floor(val) : defaultVal;
+  }
+  if (!val || typeof val !== "string") return defaultVal;
+  const trimmed = val.trim();
+  if (!/^\d+$/.test(trimmed)) return defaultVal;
+  const parsed = parseInt(trimmed, 10);
+  return parsed > 0 ? parsed : defaultVal;
 }
 
 export function sanitizeString(val?: string): string | undefined {
@@ -246,7 +287,7 @@ export function getDefaultConfig(): CmdfConfig {
     process.env.GEMINI_MODEL ||
     userConfig.model ||
     projectEnv.GEMINI_MODEL ||
-    "gemini-3.8-flash";
+    DEFAULT_CONFIG.model;
 
   const timeoutMs = parseTimeoutMs(
     process.env.CMDF_TIMEOUT_MS ||
@@ -254,7 +295,7 @@ export function getDefaultConfig(): CmdfConfig {
       userConfig.timeoutMs ||
       projectEnv.CMDF_TIMEOUT_MS ||
       projectEnv.GEMINI_TIMEOUT_MS,
-    45000,
+    DEFAULT_CONFIG.timeoutMs,
   );
 
   return {
@@ -262,13 +303,14 @@ export function getDefaultConfig(): CmdfConfig {
     provider:
       (process.env.CMDF_PROVIDER as "gemini" | "mock") ||
       userConfig.provider ||
-      "gemini",
-    model: sanitizeString(model) || "gemini-3.8-flash",
+      DEFAULT_CONFIG.provider,
+    model: sanitizeString(model) || DEFAULT_CONFIG.model,
     shell: undefined,
     timeoutMs,
-    outputFormat: "text",
-    historyLimit: userConfig.historyLimit ?? 100,
-    autoApproveReadOnly: userConfig.autoApproveReadOnly ?? false,
+    outputFormat: DEFAULT_CONFIG.outputFormat,
+    historyLimit: userConfig.historyLimit ?? DEFAULT_CONFIG.historyLimit,
+    autoApproveReadOnly:
+      userConfig.autoApproveReadOnly ?? DEFAULT_CONFIG.autoApproveReadOnly,
     geminiApiKey: resolvedKey,
     apiKeySource: resolvedSource,
   };
@@ -312,7 +354,7 @@ export function getResolvedConfig(
     sanitizeString(process.env.GEMINI_MODEL) ||
     sanitizeString(userConfig.model) ||
     sanitizeString(projectEnv.GEMINI_MODEL) ||
-    "gemini-3.8-flash";
+    DEFAULT_CONFIG.model;
 
   // Workspace resolution priority: override > process.env > userConfig > projectEnv > default
   const rawWorkspace =
@@ -334,7 +376,7 @@ export function getResolvedConfig(
       userConfig.timeoutMs ||
       projectEnv.CMDF_TIMEOUT_MS ||
       projectEnv.GEMINI_TIMEOUT_MS,
-    45000,
+    DEFAULT_CONFIG.timeoutMs,
   );
 
   return resolved;

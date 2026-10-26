@@ -144,7 +144,7 @@ sequenceDiagram
 | `-w, --workspace <path>` | Approved workspace root directory (defaults to current directory) |
 | `-m, --model <name>` | Gemini model to use (`gemini-3.5-flash`, `gemini-3.8-flash`, etc.) |
 | `-p, --provider <name>` | AI provider (`gemini` or `mock`) |
-| `-t, --timeout <ms>` | AI request timeout in milliseconds (defaults to `45000`) |
+| `-t, --timeout <ms>` | AI request timeout in milliseconds (defaults to `60000`) |
 | `-d, --dry-run` | Simulate plan without modifying files or executing commands |
 | `-y, --yes` | Automatically approve non-destructive actions |
 | `-h, --help` | Display command help |
@@ -303,11 +303,11 @@ CMDF_WORKSPACE=.
 
 | Issue / Error | Root Cause | Solution |
 | :--- | :--- | :--- |
-| `Daily Gemini API quota has been exhausted (429 RESOURCE_EXHAUSTED)` | Preview models like `gemini-3.8-flash` have stricter daily request limits on Free Tier | Switch to `gemini-3.5-flash`: `cmdf config set model gemini-3.5-flash` |
-| `AI planning request timed out after 45000ms` | Model thinking latency or network congestion | Switch to `gemini-3.5-flash` or increase timeout: `cmdf config set timeoutMs 60000` |
+| `Daily Gemini API quota has been exhausted (429 RESOURCE_EXHAUSTED)` | Daily request limit reached on Free Tier | Check quota in Google AI Studio or switch model: `cmdf config set model <model-id>` |
+| `Gemini planning request timed out after ...` | Model latency or network congestion | Increase timeout: `cmdf config set timeoutMs 90000` |
 | `Gemini API key is not configured` | No key set in env, user config, or `.env` | Run `cmdf config set-key` to configure your key |
 | `Invalid or unauthorized Gemini API key (401/403)` | API key is invalid or revoked | Verify your key at [Google AI Studio](https://aistudio.google.com/apikey) and re-run `cmdf config set-key` |
-| `Model "..." is no longer available (404)` | Deprecated model ID | Run `cmdf config set model gemini-3.5-flash` |
+| `The configured Gemini model is unavailable or unsupported` | Model ID unavailable for your key | Update model: `cmdf config set model <model-id>` |
 | `Permission denied` on config file | Insecure file mode on Unix systems | Run `chmod 600 ~/.cmdf/config.json` |
 
 ---
