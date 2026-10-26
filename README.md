@@ -74,10 +74,9 @@ Follow the prompts displayed by cmdf to complete each task. Verify the results i
 
 ## Demo Video
 
-[![Watch the cmdf Setup Tutorial](docs/cmdf-thumbnail.png)](docs/cmdf%20setup.mp4)
+Watch the `cmdf` setup tutorial to learn how to install the CLI, configure your Gemini API key, verify your setup, and run your first commands.
 
-*Watch how to install cmdf, configure your Gemini API key, verify your setup, and run your first commands.*
-
+https://github.com/user-attachments/assets/4c364d17-3057-47da-8859-646a87c8b4f0
 ---
 
 ## Key Features
