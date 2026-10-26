@@ -14,58 +14,6 @@ Instead of memorizing esoteric shell commands, obscure flags, or platform incomp
 
 ---
 
-## Key Features
-
-- **Natural Language Intent Engine**: Handles intuitive developer tasks (e.g., `"create folder name DEMO"`, `"find all Java files"`).
-- **Interactive Approval & Revision**: 3-option workflow allows approving (`✅ Approve and execute`), revising in-place (`📝 Revise with instruction`), or cancelling safely (`❌ Cancel`) without side effects.
-- **Fast, Bounded AI Generation**: Optimized generation with low thinking latency, strict deadline budgeting across attempts, and cancellation signals.
-- **Structured Plan Validation**: Powered by Zod schemas to ensure every step has a valid action type, arguments, risk level, and explanations.
-- **System Doctor Diagnostics**: `cmdf doctor` performs runtime checks, workspace validation, and a live API connectivity probe.
-- **Three-Tier Risk Policy**:
-  - **Read-Only**: File searches, directory listings, reading files, and git logs.
-  - **Modifying**: Creating directories, writing files, installing packages (requires approval).
-  - **Destructive**: Deleting files or resetting git trees (defaults to Cancel with high-visibility warnings).
-- **Security-First Execution**:
-  - Prefers deterministic Node.js filesystem APIs over general-purpose shells.
-  - Prohibits `shell: true` on untrusted command strings; uses `spawn`/`execFile` with argument arrays.
-  - Enforces workspace boundaries, preventing directory traversal (`../`) and drive-hopping.
-  - Validates commands against a strict blocklist for destructive system calls (`rm -rf /`, `format`, fork bombs).
-- **Genuine Dry-Run Simulation**: `--dry-run` simulates the plan without applying filesystem modifications.
-- **Command Explanations**: `cmdf explain "<command>"` safely breaks down flags, read/write impact, and safety alternatives.
-- **Cross-Platform**: First-class support for Windows PowerShell, Windows Terminal, macOS Zsh, and Linux Bash.
-- **Offline Mock Provider**: Run offline or in CI with `--provider mock`.
-
----
-
-## Bring Your Own Key (BYOK) Architecture
-
-`cmdf` operates on a strict **Bring Your Own Key (BYOK)** model:
-
-- **Direct local connection**: All Gemini API requests are dispatched directly from your terminal to Google's official Gemini API endpoint via the `@google/genai` SDK.
-- **Zero middleman / Zero telemetry**: There is no developer-controlled proxy, server, or database. Your keys and workspace contents never touch third-party infrastructure.
-- **Your key, your quota**: Every user supplies their personal Gemini API key. Requests consume your personal Google Gemini quota.
-- **Strict secret protection**: Keys are masked in CLI output (e.g., `AQ.A••••••••••••••••••••_I5A`) and secured with restrictive local permissions.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as User Terminal
-    participant CLI as cmdf (Local CLI)
-    participant Config as ~/.cmdf/config.json (0600)
-    participant Google as Google Gemini API (@google/genai SDK)
-
-    User->>CLI: cmdf "create folder name DEMO"
-    CLI->>Config: Resolve key (Priority: Env > User Config > .env)
-    Config-->>CLI: Masked API key resolved
-    CLI->>Google: Direct HTTPS request with AbortController & Low Thinking
-    Google-->>CLI: Structured JSON Action Plan
-    CLI->>User: Display proposed plan, explanations & risk
-    User->>CLI: Approve / Revise / Cancel
-    CLI->>User: Safe local execution & disk verification
-```
-
----
-
 ## Setup
 
 ### 1. Install cmdf
@@ -124,7 +72,63 @@ Follow the prompts displayed by cmdf to complete each task. Verify the results i
 
 ---
 
-## Demo Video [![Watch the cmdf Setup Tutorial](docs/cmdf-thumbnail.png)](docs/cmdf%20setup.mp4) *Watch how to install cmdf, configure your Gemini API key, verify your setup, and run your first commands.*
+## Demo Video
+
+[![Watch the cmdf Setup Tutorial](docs/cmdf-thumbnail.png)](docs/cmdf%20setup.mp4)
+
+*Watch how to install cmdf, configure your Gemini API key, verify your setup, and run your first commands.*
+
+---
+
+## Key Features
+
+- **Natural Language Intent Engine**: Handles intuitive developer tasks (e.g., `"create folder name DEMO"`, `"find all Java files"`).
+- **Interactive Approval & Revision**: 3-option workflow allows approving (`✅ Approve and execute`), revising in-place (`📝 Revise with instruction`), or cancelling safely (`❌ Cancel`) without side effects.
+- **Fast, Bounded AI Generation**: Optimized generation with low thinking latency, strict deadline budgeting across attempts, and cancellation signals.
+- **Structured Plan Validation**: Powered by Zod schemas to ensure every step has a valid action type, arguments, risk level, and explanations.
+- **System Doctor Diagnostics**: `cmdf doctor` performs runtime checks, workspace validation, and a live API connectivity probe.
+- **Three-Tier Risk Policy**:
+  - **Read-Only**: File searches, directory listings, reading files, and git logs.
+  - **Modifying**: Creating directories, writing files, installing packages (requires approval).
+  - **Destructive**: Deleting files or resetting git trees (defaults to Cancel with high-visibility warnings).
+- **Security-First Execution**:
+  - Prefers deterministic Node.js filesystem APIs over general-purpose shells.
+  - Prohibits `shell: true` on untrusted command strings; uses `spawn`/`execFile` with argument arrays.
+  - Enforces workspace boundaries, preventing directory traversal (`../`) and drive-hopping.
+  - Validates commands against a strict blocklist for destructive system calls (`rm -rf /`, `format`, fork bombs).
+- **Genuine Dry-Run Simulation**: `--dry-run` simulates the plan without applying filesystem modifications.
+- **Command Explanations**: `cmdf explain "<command>"` safely breaks down flags, read/write impact, and safety alternatives.
+- **Cross-Platform**: First-class support for Windows PowerShell, Windows Terminal, macOS Zsh, and Linux Bash.
+- **Offline Mock Provider**: Run offline or in CI with `--provider mock`.
+
+---
+
+## Bring Your Own Key (BYOK) Architecture
+
+`cmdf` operates on a strict **Bring Your Own Key (BYOK)** model:
+
+- **Direct local connection**: All Gemini API requests are dispatched directly from your terminal to Google's official Gemini API endpoint via the `@google/genai` SDK.
+- **Zero middleman / Zero telemetry**: There is no developer-controlled proxy, server, or database. Your keys and workspace contents never touch third-party infrastructure.
+- **Your key, your quota**: Every user supplies their personal Gemini API key. Requests consume your personal Google Gemini quota.
+- **Strict secret protection**: Keys are masked in CLI output (e.g., `AQ.A••••••••••••••••••••_I5A`) and secured with restrictive local permissions.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User Terminal
+    participant CLI as cmdf (Local CLI)
+    participant Config as ~/.cmdf/config.json (0600)
+    participant Google as Google Gemini API (@google/genai SDK)
+
+    User->>CLI: cmdf "create folder name DEMO"
+    CLI->>Config: Resolve key (Priority: Env > User Config > .env)
+    Config-->>CLI: Masked API key resolved
+    CLI->>Google: Direct HTTPS request with AbortController & Low Thinking
+    Google-->>CLI: Structured JSON Action Plan
+    CLI->>User: Display proposed plan, explanations & risk
+    User->>CLI: Approve / Revise / Cancel
+    CLI->>User: Safe local execution & disk verification
+```
 
 ---
 
