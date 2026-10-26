@@ -8,9 +8,19 @@
 [![TypeScript: 5.7](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![Tests: Vitest](https://img.shields.io/badge/Tests-Vitest%20(78%20passed)-purple.svg)](https://vitest.dev/)
 
-**cmdf** is an independent, cross-platform, AI-powered natural-language terminal assistant. It translates your natural-language intent into structured, inspectable action plans and safely executes terminal, filesystem, and developer tasks.
+**cmdf** is an open-source, cross-platform, natural-language terminal assistant. It translates your intent into structured, inspectable action plans and helps execute terminal, filesystem, and developer tasks.
 
-Instead of memorizing esoteric shell commands, obscure flags, or platform incompatibilities across Windows PowerShell, Windows Terminal, macOS Zsh, and Linux Bash, simply describe what you want in plain English. `cmdf` analyzes your environment, formulates a validated plan, categorizes risk, explains what each step does, and guides you through an interactive approval and revision workflow before touching your files.
+Instead of memorizing complex shell commands, flags, or platform differences across Windows PowerShell, Windows Terminal, macOS Zsh, and Linux Bash, describe what you want in plain language. `cmdf` analyzes your environment, formulates a validated plan, categorizes risk, explains each step, and prompts you for approval or revision before making changes.
+
+---
+
+## Demo Video
+
+Watch the cmdf demo to see installation, Gemini API key configuration, system verification with `cmdf doctor`, and command execution in action:
+
+[![Watch the cmdf Demo](docs/cmdf-thumbnail.png)](https://github.com/user-attachments/assets/4c364d17-3057-47da-8859-646a87c8b4f0)
+
+> ▶️ **[Watch the cmdf Demo](https://github.com/user-attachments/assets/4c364d17-3057-47da-8859-646a87c8b4f0)**
 
 ---
 
@@ -69,16 +79,6 @@ cmdf "find all Java files"
 ```
 
 Follow the prompts displayed by cmdf to complete each task. Verify the results in your workspace.
-
----
-
-## Demo Video
-
-Watch the `cmdf` setup tutorial to learn how to install the CLI, configure your Gemini API key, verify your setup, and run your first commands:
-
-[![Watch the cmdf Setup Tutorial](docs/cmdf-thumbnail.png)](https://github.com/user-attachments/assets/4c364d17-3057-47da-8859-646a87c8b4f0)
-
-> ▶️ **Click the thumbnail above to play the setup walkthrough video.**
 
 ---
 
