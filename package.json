@@ -1,6 +1,6 @@
 {
   "name": "@prashantxdev/cmdf",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "AI-Powered Natural Language Terminal Assistant — Your intent. One command.",
   "publishConfig": {
     "access": "public"
