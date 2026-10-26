@@ -8,7 +8,7 @@
 [![TypeScript: 5.7](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![Tests: Vitest](https://img.shields.io/badge/Tests-Vitest%20(78%20passed)-purple.svg)](https://vitest.dev/)
 
-**cmdf** is a cross-platform, AI-powered command-line terminal assistant inspired by the polished developer experience of Builder.io AI Shell. It translates your natural-language intent into structured, inspectable action plans and safely executes terminal, filesystem, and developer tasks.
+**cmdf** is an independent, cross-platform, AI-powered natural-language terminal assistant. It translates your natural-language intent into structured, inspectable action plans and safely executes terminal, filesystem, and developer tasks.
 
 Instead of memorizing esoteric shell commands, obscure flags, or platform incompatibilities across Windows PowerShell, Windows Terminal, macOS Zsh, and Linux Bash, simply describe what you want in plain English. `cmdf` analyzes your environment, formulates a validated plan, categorizes risk, explains what each step does, and guides you through an interactive approval and revision workflow before touching your files.
 
@@ -16,7 +16,7 @@ Instead of memorizing esoteric shell commands, obscure flags, or platform incomp
 
 ## The cmdf Workflow
 
-Inspired by the clean interaction design of Builder.io AI Shell, `cmdf` provides an intuitive 3-step experience:
+`cmdf` provides an intuitive 3-step experience:
 
 ```text
 1. Install globally:
@@ -481,11 +481,9 @@ All automated tests use mocked providers or in-memory fixtures. No real API keys
 
 ---
 
-## License & Originality
+## License
 
 This project is independently developed and licensed under the [MIT License](LICENSE).
-
-Reference inspiration: [Builder.io AI Shell](https://github.com/BuilderIO/ai-shell) (MIT License). Interaction design principles (approval, revision, and concise terminal presentation) have been adapted and implemented specifically for `cmdf`'s TypeScript + Google GenAI architecture.
 
 - **GitHub Repository**: [https://github.com/prashantxdev/cmdf](https://github.com/prashantxdev/cmdf)
 - **npm Package**: [https://www.npmjs.com/package/@prashantxdev/cmdf](https://www.npmjs.com/package/@prashantxdev/cmdf)
