@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node: >=18.0.0](https://img.shields.io/badge/Node-%3E%3D18.0.0-green.svg)](https://nodejs.org/)
 [![TypeScript: 5.7](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
-[![Tests: Vitest](https://img.shields.io/badge/Tests-Vitest%20(78%20passed)-purple.svg)](https://vitest.dev/)
+[![Tests: Vitest](https://img.shields.io/badge/Tests-Vitest%20(98%20passed)-purple.svg)](https://vitest.dev/)
 
 **cmdf** is an open-source, cross-platform, natural-language terminal assistant. It translates your intent into structured, inspectable action plans and helps execute terminal, filesystem, and developer tasks.
 
@@ -16,11 +16,11 @@ Instead of memorizing complex shell commands, flags, or platform differences acr
 
 ## Demo Video
 
-Watch the cmdf demo to see installation, Gemini API key configuration, system verification with `cmdf doctor`, and command execution in action:
+Watch the cmdf demo to see installation, Gemini API key configuration, system verification with `cmdf doctor`, and command execution in action.
 
 [![Watch the cmdf Demo](docs/cmdf-thumbnail.png)](https://github.com/user-attachments/assets/4c364d17-3057-47da-8859-646a87c8b4f0)
 
-> ▶️ **[Watch the cmdf Demo](https://github.com/user-attachments/assets/4c364d17-3057-47da-8859-646a87c8b4f0)**
+▶️ **[Watch the cmdf Demo](https://github.com/user-attachments/assets/4c364d17-3057-47da-8859-646a87c8b4f0)**
 
 ---
 
@@ -62,6 +62,8 @@ cmdf doctor
 
 This checks your environment and API connectivity.
 
+**Facing timeout errors?** Follow the [Timeout Troubleshooting Guide](#timeout-errors) for steps to increase the request timeout and diagnose connection issues.
+
 ### 5. Run your first command
 
 Use natural language to describe the task you want cmdf to perform.
@@ -84,24 +86,24 @@ Follow the prompts displayed by cmdf to complete each task. Verify the results i
 
 ## Key Features
 
-- **Natural Language Intent Engine**: Handles intuitive developer tasks (e.g., `"create folder name DEMO"`, `"find all Java files"`).
-- **Interactive Approval & Revision**: 3-option workflow allows approving (`✅ Approve and execute`), revising in-place (`📝 Revise with instruction`), or cancelling safely (`❌ Cancel`) without side effects.
-- **Fast, Bounded AI Generation**: Optimized generation with low thinking latency, strict deadline budgeting across attempts, and cancellation signals.
-- **Structured Plan Validation**: Powered by Zod schemas to ensure every step has a valid action type, arguments, risk level, and explanations.
-- **System Doctor Diagnostics**: `cmdf doctor` performs runtime checks, workspace validation, and a live API connectivity probe.
-- **Three-Tier Risk Policy**:
-  - **Read-Only**: File searches, directory listings, reading files, and git logs.
-  - **Modifying**: Creating directories, writing files, installing packages (requires approval).
-  - **Destructive**: Deleting files or resetting git trees (defaults to Cancel with high-visibility warnings).
-- **Security-First Execution**:
+- **Natural Language Intent Engine:** Handles intuitive developer tasks (e.g., `"create folder name DEMO"`, `"find all Java files"`).
+- **Interactive Approval & Revision:** Three-option workflow allows approving (`✅ Approve and execute`), revising in place (`📝 Revise with instruction`), or cancelling safely (`❌ Cancel`) without side effects.
+- **Fast, Bounded AI Generation:** Optimized generation with low thinking latency, strict deadline budgeting across attempts, and cancellation signals.
+- **Structured Plan Validation:** Powered by Zod schemas to ensure every step has a valid action type, arguments, risk level, and explanations.
+- **System Doctor Diagnostics:** `cmdf doctor` performs runtime checks, workspace validation, and a live API connectivity probe.
+- **Three-Tier Risk Policy:**
+  - **Read-Only:** File searches, directory listings, reading files, and Git logs.
+  - **Modifying:** Creating directories, writing files, installing packages (requires approval).
+  - **Destructive:** Deleting files or resetting Git trees (defaults to Cancel with high-visibility warnings).
+- **Security-First Execution:**
   - Prefers deterministic Node.js filesystem APIs over general-purpose shells.
   - Prohibits `shell: true` on untrusted command strings; uses `spawn`/`execFile` with argument arrays.
   - Enforces workspace boundaries, preventing directory traversal (`../`) and drive-hopping.
   - Validates commands against a strict blocklist for destructive system calls (`rm -rf /`, `format`, fork bombs).
-- **Genuine Dry-Run Simulation**: `--dry-run` simulates the plan without applying filesystem modifications.
-- **Command Explanations**: `cmdf explain "<command>"` safely breaks down flags, read/write impact, and safety alternatives.
-- **Cross-Platform**: First-class support for Windows PowerShell, Windows Terminal, macOS Zsh, and Linux Bash.
-- **Offline Mock Provider**: Run offline or in CI with `--provider mock`.
+- **Genuine Dry-Run Simulation:** `--dry-run` simulates the plan without applying filesystem modifications.
+- **Command Explanations:** `cmdf explain "<command>"` safely breaks down flags, read/write impact, and safety alternatives.
+- **Cross-Platform:** First-class support for Windows PowerShell, Windows Terminal, macOS Zsh, and Linux Bash.
+- **Offline Mock Provider:** Run offline or in CI with `--provider mock`.
 
 ---
 
@@ -109,10 +111,10 @@ Follow the prompts displayed by cmdf to complete each task. Verify the results i
 
 `cmdf` operates on a strict **Bring Your Own Key (BYOK)** model:
 
-- **Direct local connection**: All Gemini API requests are dispatched directly from your terminal to Google's official Gemini API endpoint via the `@google/genai` SDK.
-- **Zero middleman / Zero telemetry**: There is no developer-controlled proxy, server, or database. Your keys and workspace contents never touch third-party infrastructure.
-- **Your key, your quota**: Every user supplies their personal Gemini API key. Requests consume your personal Google Gemini quota.
-- **Strict secret protection**: Keys are masked in CLI output (e.g., `AQ.A••••••••••••••••••••_I5A`) and secured with restrictive local permissions.
+- **Direct local connection:** All Gemini API requests are dispatched directly from your terminal to Google's official Gemini API endpoint via the `@google/genai` SDK.
+- **Zero middleman / Zero telemetry:** There is no developer-controlled proxy, server, or database. Your keys and workspace contents never touch third-party infrastructure.
+- **Your key, your quota:** Every user supplies their personal Gemini API key. Requests consume your personal Google Gemini quota.
+- **Strict secret protection:** Keys are masked in CLI output (e.g., `AQ.A••••••••••••••••••••_I5A`) and secured with restrictive local permissions.
 
 ```mermaid
 sequenceDiagram
@@ -142,16 +144,14 @@ sequenceDiagram
 | :--- | :--- |
 | `-v, --version` | Display version number |
 | `-w, --workspace <path>` | Approved workspace root directory (defaults to current directory) |
-| `-m, --model <name>` | Gemini model to use (`gemini-3.5-flash`, `gemini-3.8-flash`, etc.) |
+| `-m, --model <name>` | Gemini model to use |
 | `-p, --provider <name>` | AI provider (`gemini` or `mock`) |
 | `-t, --timeout <ms>` | AI request timeout in milliseconds (defaults to `60000`) |
-| `-d, --dry-run` | Simulate plan without modifying files or executing commands |
+| `-d, --dry-run` | Simulate a plan without modifying files or executing commands |
 | `-y, --yes` | Automatically approve non-destructive actions |
 | `-h, --help` | Display command help |
 
-### Commands
-
-#### 1. Natural Language Task Execution (Default)
+### 1. Natural Language Task Execution (Default)
 
 ```bash
 cmdf [options] [instruction...]
@@ -173,7 +173,7 @@ cmdf --dry-run "create src/index.ts and initialize git"
 cmdf -y "find all Java files"
 ```
 
-#### 2. Plan Inspection (`cmdf plan`)
+### 2. Plan Inspection (`cmdf plan`)
 
 ```bash
 cmdf plan [options] <instruction...>
@@ -185,7 +185,7 @@ Generates and displays the structured plan and explanations without executing an
 cmdf plan "find all Java files"
 ```
 
-#### 3. Command Explanation (`cmdf explain`)
+### 3. Command Explanation (`cmdf explain`)
 
 ```bash
 cmdf explain [options] <command...>
@@ -198,7 +198,7 @@ cmdf explain "git log -n 5 --oneline"
 cmdf explain "rm -rf node_modules"
 ```
 
-#### 4. System Diagnostics (`cmdf doctor`)
+### 4. System Diagnostics (`cmdf doctor`)
 
 ```bash
 cmdf doctor [options]
@@ -211,7 +211,7 @@ cmdf doctor
 cmdf doctor -m gemini-3.5-flash
 ```
 
-#### 5. Configuration (`cmdf config`)
+### 5. Configuration (`cmdf config`)
 
 ```bash
 cmdf config                       # Interactive configuration wizard
@@ -222,7 +222,7 @@ cmdf config delete-key            # Delete stored key
 cmdf config set <key> <value>     # Update a specific setting (model, timeoutMs)
 ```
 
-#### 6. Execution History (`cmdf history`)
+### 6. Execution History (`cmdf history`)
 
 ```bash
 cmdf history                      # View recent request history
@@ -251,11 +251,14 @@ cmdf config set model gemini-3.5-flash
 cmdf config set timeoutMs 60000
 ```
 
+The default request timeout is **60,000 milliseconds (60 seconds)**. If you experience slow responses, see [Timeout Errors](#timeout-errors).
+
 ### Environment Variables
 
 You can also configure `cmdf` via environment variables:
 
 **Windows PowerShell:**
+
 ```powershell
 # Current terminal session:
 $env:GEMINI_API_KEY="your_api_key_here"
@@ -265,12 +268,14 @@ $env:GEMINI_API_KEY="your_api_key_here"
 ```
 
 **macOS / Linux (`~/.bashrc` or `~/.zshrc`):**
+
 ```bash
 export GEMINI_API_KEY="your_api_key_here"
 export GEMINI_MODEL="gemini-3.5-flash"
 ```
 
 **Local `.env` file:**
+
 ```env
 GEMINI_API_KEY=your_api_key_here
 GEMINI_MODEL=gemini-3.5-flash
@@ -283,19 +288,19 @@ CMDF_WORKSPACE=.
 
 `cmdf` supports Google Gemini models via `@google/genai`:
 
-- **Recommended Model (`gemini-3.5-flash`)**: Delivers fast ~2-second responses, generous free-tier limits, and full JSON schema compliance.
-- **Thinking Models (`gemini-3.8-flash`)**: Preview model with extended reasoning capabilities. `cmdf` automatically applies `{ thinkingLevel: "low" }` to minimize reasoning latency while preserving planning accuracy. Note that Google AI Studio enforces stricter daily quotas on preview models.
-- **Deadline Budgeting & Native Cancellation**: `cmdf` enforces a total deadline budget (`Date.now() + timeoutMs`) across attempts. Retries are strictly bounded and abort immediately via `AbortController` if the budget is depleted.
+- **Recommended Model (`gemini-3.5-flash`):** Check current Google AI Studio availability and quota before choosing a model.
+- **Thinking Models:** Some models support extended reasoning. Where supported, `cmdf` can use a low thinking level to reduce reasoning latency.
+- **Deadline Budgeting & Native Cancellation:** `cmdf` enforces a total deadline budget (`Date.now() + timeoutMs`) across attempts. Retries are bounded, and requests are cancelled when the budget is depleted.
 
 ---
 
 ## Security & Execution Safeguards
 
-1. **Workspace Boundary Containment**: All filesystem paths are checked using path normalization and security guards. Path traversal sequences (`../`), relative escapes, and drive-hopping outside the workspace are blocked before execution.
-2. **No Arbitrary Shell Execution**: Deterministic filesystem operations (create file, create folder, list directory, search files, move, delete) use native Node.js APIs (`node:fs`). Shell commands only run when no native alternative exists, using sanitized `child_process.spawn` argument arrays.
-3. **Command Validator**: Dangerous destructive system commands (`rm -rf /`, `mkfs`, `format`, fork bombs, `chmod 777 /`) are caught by the security policy and refused.
-4. **Secret Redaction**: API keys, GitHub tokens, and private credentials are automatically scrubbed from error messages and history logs.
-5. **Restrictive File Permissions**: On macOS/Linux, `~/.cmdf/config.json` is stored with `0600` (owner read/write only). On Windows, it is protected by Windows NTFS Access Control Lists (ACLs).
+1. **Workspace Boundary Containment:** All filesystem paths are checked using path normalization and security guards. Path traversal sequences (`../`), relative escapes, and drive-hopping outside the workspace are blocked before execution.
+2. **No Arbitrary Shell Execution:** Deterministic filesystem operations (create file, create folder, list directory, search files, move, delete) use native Node.js APIs (`node:fs`). Shell commands only run when no native alternative exists, using sanitized `child_process.spawn` argument arrays.
+3. **Command Validator:** Dangerous destructive system commands (`rm -rf /`, `mkfs`, `format`, fork bombs, `chmod 777 /`) are caught by the security policy and refused.
+4. **Secret Redaction:** API keys, GitHub tokens, and private credentials are automatically scrubbed from error messages and history logs.
+5. **Restrictive File Permissions:** On macOS/Linux, `~/.cmdf/config.json` is stored with `0600` (owner read/write only). On Windows, it is protected by Windows NTFS Access Control Lists (ACLs).
 
 ---
 
@@ -304,11 +309,41 @@ CMDF_WORKSPACE=.
 | Issue / Error | Root Cause | Solution |
 | :--- | :--- | :--- |
 | `Daily Gemini API quota has been exhausted (429 RESOURCE_EXHAUSTED)` | Daily request limit reached on Free Tier | Check quota in Google AI Studio or switch model: `cmdf config set model <model-id>` |
-| `Gemini planning request timed out after ...` | Model latency or network congestion | Increase timeout: `cmdf config set timeoutMs 90000` |
-| `Gemini API key is not configured` | No key set in env, user config, or `.env` | Run `cmdf config set-key` to configure your key |
-| `Invalid or unauthorized Gemini API key (401/403)` | API key is invalid or revoked | Verify your key at [Google AI Studio](https://aistudio.google.com/apikey) and re-run `cmdf config set-key` |
-| `The configured Gemini model is unavailable or unsupported` | Model ID unavailable for your key | Update model: `cmdf config set model <model-id>` |
-| `Permission denied` on config file | Insecure file mode on Unix systems | Run `chmod 600 ~/.cmdf/config.json` |
+| `Gemini planning request timed out after ...` | Model latency or network congestion | Increase timeout with `cmdf config set timeoutMs 90000`, then run `cmdf doctor`. See [Timeout Errors](#timeout-errors) for details. |
+| `Gemini API key is not configured` | No key set in env, user config, or `.env` | Run `cmdf config set-key` to configure your key. |
+| `Invalid or unauthorized Gemini API key (401/403)` | API key is invalid or revoked | Verify your key at [Google AI Studio](https://aistudio.google.com/apikey) and re-run `cmdf config set-key`. |
+| `The configured Gemini model is unavailable or unsupported` | Model ID unavailable for your key | Update the model: `cmdf config set model <model-id>`. |
+| `Permission denied` on config file | Insecure file mode on Unix systems | Run `chmod 600 ~/.cmdf/config.json` where applicable. |
+
+### Timeout Errors
+
+`cmdf` uses a default AI request timeout of **60 seconds (60,000 ms)**. If Gemini responds slowly because of model latency or network congestion, you can increase the timeout.
+
+**Step 1: Increase the timeout**
+
+```bash
+cmdf config set timeoutMs 90000
+```
+
+This sets the timeout to 90 seconds.
+
+**Step 2: Verify your configuration**
+
+```bash
+cmdf config list
+```
+
+Check that `timeoutMs` is set to `90000`.
+
+**Step 3: Test your connection**
+
+```bash
+cmdf doctor
+```
+
+If the timeout persists, check your internet connection and verify that the selected Gemini model is available for your API key.
+
+**Important:** Increasing the timeout only gives a slow request more time to complete. It does not fix exhausted API quotas (`429 RESOURCE_EXHAUSTED`), invalid API keys (`401/403`), or persistent network failures.
 
 ---
 
@@ -329,7 +364,7 @@ npm install
 # Compile TypeScript
 npm run build
 
-# Run unit and integration tests (78 passing tests, zero real API calls)
+# Run unit and integration tests
 npm test
 
 # Type-check without emitting
@@ -338,11 +373,11 @@ npm run typecheck
 # Lint check
 npm run lint
 
-# Dry-run package inspection (verifies secrets and tests are excluded)
+# Dry-run package inspection
 npm pack --dry-run
 ```
 
-All automated tests use mocked providers or in-memory fixtures. No real API keys or paid quotas are ever consumed during testing.
+The current test suite reports 98 passing tests. Automated tests should use mocked providers or in-memory fixtures so they do not consume real API quotas.
 
 ---
 
@@ -350,5 +385,5 @@ All automated tests use mocked providers or in-memory fixtures. No real API keys
 
 This project is independently developed and licensed under the [MIT License](LICENSE).
 
-- **GitHub Repository**: [https://github.com/prashantxdev/cmdf](https://github.com/prashantxdev/cmdf)
-- **npm Package**: [https://www.npmjs.com/package/@prashantxdev/cmdf](https://www.npmjs.com/package/@prashantxdev/cmdf)
+- **GitHub Repository:** [https://github.com/prashantxdev/cmdf](https://github.com/prashantxdev/cmdf)
+- **npm Package:** [https://www.npmjs.com/package/@prashantxdev/cmdf](https://www.npmjs.com/package/@prashantxdev/cmdf)
