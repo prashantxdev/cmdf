@@ -16,7 +16,7 @@ import { saveHistoryEntry } from "../history/index.js";
 
 export async function runInteractiveSession(
   config: CmdfConfig,
-  version: string = "1.0.2",
+  version: string = "1.0.5",
 ): Promise<void> {
   const env = getEnvironmentInfo(config.shell);
   console.log(formatBanner(version, env, config.workspace));

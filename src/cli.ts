@@ -32,7 +32,7 @@ import {
 import { runDoctorChecks, printDoctorResults } from "./utils/doctor.js";
 import { runInteractiveSession } from "./interactive/session.js";
 
-const VERSION = "1.0.2";
+const VERSION = "1.0.5";
 
 const program = new Command();
 
